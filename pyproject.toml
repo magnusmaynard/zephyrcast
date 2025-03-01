@@ -14,7 +14,9 @@ dependencies = [
     "requests (>=2.32.3,<3.0.0)",
     "pandas (>=2.2.3,<3.0.0)",
     "numpy (>=2.2.3,<3.0.0)",
-    "aiohttp (>=3.11.13,<4.0.0)"
+    "aiohttp (>=3.11.13,<4.0.0)",
+    "xgboost (>=2.1.4,<3.0.0)",
+    "matplotlib (>=3.10.1,<4.0.0)"
 ]
 
 [tool.poetry]
@@ -27,3 +29,4 @@ build-backend = "poetry.core.masonry.api"
 [project.scripts]
 fetch = 'zephyrcast.fetch:run'
 prepare = 'zephyrcast.prepare:run'
+train = 'zephyrcast.train:run'

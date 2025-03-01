@@ -16,5 +16,5 @@ poetry run train
 ```
 
 ## Notes
-- This repo for initial experimentation with Zephyr API: https://github.com/lewinfox/
+- This repo was used for initial experimentation with Zephyr API: https://github.com/lewinfox/
 - Zephyr repo: https://github.com/kyzh0/zephyr
