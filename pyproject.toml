@@ -26,3 +26,4 @@ build-backend = "poetry.core.masonry.api"
 
 [project.scripts]
 fetch = 'zephyrcast.fetch:run'
+prepare = 'zephyrcast.prepare:run'
