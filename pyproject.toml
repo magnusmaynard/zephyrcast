@@ -16,8 +16,14 @@ dependencies = [
     "numpy (>=2.2.3,<3.0.0)",
     "aiohttp (>=3.11.13,<4.0.0)",
     "xgboost (>=2.1.4,<3.0.0)",
-    "matplotlib (>=3.10.1,<4.0.0)"
+    "matplotlib (>=3.10.1,<4.0.0)",
+    "tomlkit (>=0.13.2,<0.14.0)"
 ]
+
+[tool.zephyrcast]
+data_dir = "data"
+output_dir = "output"
+models_dir = "models"
 
 [tool.poetry]
 packages = [{include = "zephyrcast", from = "src"}]
