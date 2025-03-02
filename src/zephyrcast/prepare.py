@@ -191,7 +191,7 @@ def run():
     original_output_file = os.path.join(output_dir, original_filename)
     
     # Save featured data
-    feature_filename = f"{target_station.replace('# ', '_').lower()}"
+    feature_filename = f"{target_station.replace(' ', '_').lower()}"
     if len(nearby_stations) > 0:
         feature_filename += f"_{len(nearby_stations)}"
     feature_filename += "_features.csv"

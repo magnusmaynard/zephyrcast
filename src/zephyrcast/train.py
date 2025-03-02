@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import random
 from zephyrcast import project_config
 
-TARGET_COLUMNS = ["wind_avg", "wind_gust", "temperature"]
+TARGET_COLUMNS = ["0_wind_avg", "0_wind_gust", "0_temp"]
 FUTURE_STEPS = 3  # 30 minutes (3 x 10 minute intervals)
 LOOKBACK_STEPS = 6  # Use 6 previous readings (60 minutes)
 NUM_SAMPLES = 5
@@ -37,25 +37,12 @@ def load_data_from_csv(csv_file):
     return df
 
 
-def prepare_features(df, target_cols, future_steps):
+def add_lag_features(df, target_cols, future_steps):
     """Create features and targets with a simplified approach"""
     # Create a copy for feature engineering
     df_features = df.copy()
 
-    # Add basic time features
-    df_features["minute"] = df_features.index.minute
-    df_features["hour"] = df_features.index.hour
-    df_features["month"] = df_features.index.month
-
-    # Add cyclical time features
-    df_features["hour_sin"] = np.sin(2 * np.pi * df_features.index.hour / 24)
-    df_features["hour_cos"] = np.cos(2 * np.pi * df_features.index.hour / 24)
-    df_features["month_sin"] = np.sin(2 * np.pi * df_features.index.month / 12)
-    df_features["month_cos"] = np.cos(2 * np.pi * df_features.index.month / 12)
-
-    # Convert wind_bearing to cyclical features
-    df_features["wind_dir_sin"] = np.sin(2 * np.pi * df["wind_bearing"] / 360)
-    df_features["wind_dir_cos"] = np.cos(2 * np.pi * df["wind_bearing"] / 360)
+    # TODO: create lag features
 
     # Create lag features (configurable lookback)
     for col in target_cols:
@@ -388,12 +375,12 @@ def save_models(models, scaler, feature_cols):
 
 def run():
     # Change the input file path to the CSV file
-    df_raw = load_data_from_csv("output/rocky_gully_data.csv")
+    df_raw = load_data_from_csv("output/rocky_gully_5_features.csv")
 
-    df_processed = prepare_features(df_raw, TARGET_COLUMNS, FUTURE_STEPS)
+    df_lagged = add_lag_features(df_raw, TARGET_COLUMNS, FUTURE_STEPS)
 
     X, targets, feature_cols = split_features_targets(
-        df_processed, TARGET_COLUMNS, FUTURE_STEPS
+        df_lagged, TARGET_COLUMNS, FUTURE_STEPS
     )
 
     models, metrics, scaler, X_train, X_test = train_models(X, targets, feature_cols)
