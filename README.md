@@ -1,8 +1,10 @@
 # zephyrcast
-Local, short term forecasting using only weather station data from Zephyr. Experimentation and work in progress.
+Local, short term forecasting using only weather station data from [Zephyr](https://zephyrapp.nz/). 
+
+_Experimental and work in progress._
 
 ## Setup
-Requires poetry to be installed:
+Requires [poetry](https://python-poetry.org/docs/#installation) to be installed:
 ```
 poetry install
 poetry run keyring set zephyr_api_key zephyrcast
@@ -16,5 +18,5 @@ poetry run train
 ```
 
 ## Notes
-- This repo was used for initial experimentation with Zephyr API: https://github.com/lewinfox/
+- Repo used for initial experimentation with Zephyr API and data: https://github.com/lewinfox/
 - Zephyr repo: https://github.com/kyzh0/zephyr
