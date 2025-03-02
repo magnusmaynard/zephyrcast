@@ -1,7 +1,7 @@
 [project]
 name = "zephyrcast"
 version = "0.1.0"
-description = "Local, short term forecasting using only weather station data from Zephyr"
+description = "Local, short-term weather forecasting specifically for paragliding safety, using solely weather station data from Zephyr."
 authors = [
     {name = "Magnus",email = "contact@magnus.co.uk"}
 ]

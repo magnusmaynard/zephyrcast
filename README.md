@@ -4,7 +4,7 @@ Local, short-term weather forecasting specifically for paragliding safety, using
 Work in progress: This proof of concept aims to develop an early warning system to alert paragliders of approaching dangerous conditions.
 
 ## Setup
-This project uses [poetry](https://python-poetry.org/docs/#installation), ensure this is install first.
+This project uses [poetry](https://python-poetry.org/docs/#installation), ensure this is installed.
 ```
 poetry install
 poetry run keyring set zephyr_api_key zephyrcast
