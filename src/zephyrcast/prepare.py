@@ -98,92 +98,58 @@ def add_time_features(df):
     return df_features
 
 
-def add_relative_features(df, target_station, nearby_stations):
+def add_relative_features(df, nearby_station_count):
     df_features = df.copy()
-    
-    # # Convert wind_bearing to cyclical features (handle NaN values)
-    # if "wind_bearing" in df.columns:
-    #     mask = df["wind_bearing"].notna()
-    #     df_features["wind_dir_sin"] = np.nan
-    #     df_features["wind_dir_cos"] = np.nan
-        
-    #     # Apply sin/cos calculations directly where wind_bearing is not NA
-    #     wind_bearings = df.loc[mask, "wind_bearing"].values
-    #     if len(wind_bearings) > 0:
-    #         sin_values = np.sin(2 * np.pi * wind_bearings / 360)
-    #         cos_values = np.cos(2 * np.pi * wind_bearings / 360)
-            
-    #         # Use the mask directly for assignment
-    #         df_features.loc[mask, "wind_dir_sin"] = sin_values
-    #         df_features.loc[mask, "wind_dir_cos"] = cos_values
-    
-    # Add elevation difference features if available
-    target_elevation = df_features["0_elev"].iloc[0]  # Assuming constant elevation for target
-    
-    for index, station_name in enumerate(nearby_stations):
-        station_id = index + 1
-        station_elevation = df_features[f"{station_id}_elev"].iloc[0]  # Assuming constant elevation for target
 
-        df_features[f"{station_id}_elev_diff"] = station_elevation - target_elevation
+    # Add wind cyclical features
+    for index in range(nearby_station_count):
+        station_id = index + 1
+        bearing = df_features[f"{station_id}_wind_bearing"] 
+        df_features[f"{station_id}_wind_dir_sin"] = np.sin(2 * np.pi * bearing / 360)
+        df_features[f"{station_id}_wind_dir_cos"] = np.cos(2 * np.pi * bearing / 360)
     
-    # # Add distance and bearing features for each nearby station
-    # target_coords = station_coordinates.get(target_station)
+    # Add elevation difference
+    target_elevation = df_features["0_elev"].dropna().iloc[0]  # Assuming constant elevation for target
     
-    # if target_coords:
-    #     for idx, station in enumerate(nearby_stations):
-    #         station_coords = station_coordinates.get(station)
-    #         if station_coords:
-    #             # Calculate distance in kilometers
-    #             distance = geodesic(target_coords, station_coords).kilometers
-    #             df_features[f"station_{idx}_distance"] = distance
-                
-    #             # Calculate bearing from target to station
-    #             bearing = calculate_bearing(target_coords, station_coords)
-    #             df_features[f"station_{idx}_bearing"] = bearing
-                
-    #             # Add cyclical bearing features
-    #             df_features[f"station_{idx}_bearing_sin"] = np.sin(2 * np.pi * bearing / 360)
-    #             df_features[f"station_{idx}_bearing_cos"] = np.cos(2 * np.pi * bearing / 360)
-                
-    #             # Add station wind_bearing cyclical features
-    #             wind_bearing_col = f"station_{idx}_wind_bearing"
-    #             if wind_bearing_col in df.columns:
-    #                 # Handle NaN values
-    #                 mask = df[wind_bearing_col].notna()
-    #                 df_features[f"station_{idx}_wind_dir_sin"] = np.nan
-    #                 df_features[f"station_{idx}_wind_dir_cos"] = np.nan
-                    
-    #                 if mask.any():
-    #                     wind_bearings = df.loc[mask, wind_bearing_col].values
-    #                     sin_values = np.sin(2 * np.pi * wind_bearings / 360)
-    #                     cos_values = np.cos(2 * np.pi * wind_bearings / 360)
-                        
-    #                     df_features.loc[mask, f"station_{idx}_wind_dir_sin"] = sin_values
-    #                     df_features.loc[mask, f"station_{idx}_wind_dir_cos"] = cos_values
-                
-    #             # Add wind vector components relative to bearing between stations
-    #             wind_bearing_col = f"station_{idx}_wind_bearing"
-    #             wind_avg_col = f"station_{idx}_wind_avg"
-    #             if wind_bearing_col in df.columns and wind_avg_col in df.columns:
-    #                 valid_mask = df[wind_bearing_col].notna() & df[wind_avg_col].notna()
-    #                 df_features[f"station_{idx}_wind_along_bearing"] = np.nan
-    #                 df_features[f"station_{idx}_wind_perp_bearing"] = np.nan
-                    
-    #                 if valid_mask.any():
-    #                     wind_bearings = df.loc[valid_mask, wind_bearing_col].values
-    #                     wind_speeds = df.loc[valid_mask, wind_avg_col].values
-    #                     angle_diff = wind_bearings - bearing
-                        
-    #                     # Convert to radians for calculation
-    #                     angle_diff_rad = np.radians(angle_diff)
-                        
-    #                     # Calculate components
-    #                     along_values = wind_speeds * np.cos(angle_diff_rad)
-    #                     perp_values = wind_speeds * np.sin(angle_diff_rad)
-                        
-    #                     df_features.loc[valid_mask, f"station_{idx}_wind_along_bearing"] = along_values
-    #                     df_features.loc[valid_mask, f"station_{idx}_wind_perp_bearing"] = perp_values
+    for index in range(nearby_station_count):
+        station_id = index + 1
+        station_elevation = df_features[f"{station_id}_elev"].dropna().iloc[0]  # Assuming constant elevation for target
+
+        df_features[f"{station_id}_elev_diff_from_target"] = station_elevation - target_elevation
     
+    # Add distance and bearing between target and nearby stations
+    target_lat = df_features["0_lat"].dropna().iloc[0]
+    target_lon = df_features["0_lon"].dropna().iloc[0]
+    target_coords = (target_lat, target_lon)
+    
+    for index in range(nearby_station_count):
+        station_id = index + 1
+        station_lat = df_features[f"{station_id}_lat"].dropna().iloc[0]
+        station_lon = df_features[f"{station_id}_lon"].dropna().iloc[0]
+        station_coords = (station_lat, station_lon)
+        
+        # Calculate distance in kilometers
+        distance = geodesic(target_coords, station_coords).kilometers
+        df_features[f"{station_id}_distance_from_target"] = distance
+        
+        # Calculate bearing from target to station
+        bearing = calculate_bearing(target_coords, station_coords)
+        df_features[f"{station_id}_bearing_from_target"] = bearing
+        
+        # Add cyclical bearing features
+        df_features[f"{station_id}_bearing_from_target_sin"] = np.sin(2 * np.pi * bearing / 360)
+        df_features[f"{station_id}_bearing_from_target_cos"] = np.cos(2 * np.pi * bearing / 360)
+        
+        # Calculate if wind is coming from station direction (useful for predicting wind patterns)
+        target_wind_bearing = df_features["0_wind_bearing"]
+        station_to_target_bearing = (bearing + 180) % 360  # Reverse bearing
+        
+        # Calculate angular difference (0-180) between wind direction and station direction
+        wind_from_station_angle = np.minimum(
+            np.abs(target_wind_bearing - station_to_target_bearing), 
+            360 - np.abs(target_wind_bearing - station_to_target_bearing)
+        )
+        df_features[f"{station_id}_wind_angle_from_target"] = wind_from_station_angle
 
     return df_features
 
@@ -192,10 +158,10 @@ def run():
     target_station = "Rocky Gully"
     nearby_stations = [
         "Flightpark",
-        # "Coronet Summit",
-        # "Coronet Tandems",
-        # "Queenstown Airport",
-        # "Crown Terrace",
+        "Coronet Summit",
+        "Coronet Tandems",
+        "Queenstown Airport",
+        "Crown Terrace",
     ]
     
     print(f"Preparing data for '{target_station}', with respect to {nearby_stations}")
@@ -208,8 +174,8 @@ def run():
     
     print("Adding features...")
     df_features = df.copy()
-    df_features = add_time_features(df_features)
-    df_features = add_relative_features(df_features, target_station, nearby_stations)
+    df_features = add_time_features(df=df_features)
+    df_features = add_relative_features(df=df_features, nearby_station_count=len(nearby_stations))
 
     # Sort for easier viewing
     df_features = df_features.reindex(sorted(df_features.columns), axis=1)
@@ -238,5 +204,3 @@ def run():
     print(f"Total results processed: {len(df)}")
     print(f"Original data saved to '{original_output_file}'")
     print(f"Featured data saved to '{feature_output_file}'")
-    
-    return df, df_features
