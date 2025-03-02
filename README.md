@@ -1,5 +1,6 @@
 # zephyrcast
 Local, short-term weather forecasting specifically for paragliding safety, using solely weather station data from [Zephyr](https://zephyrapp.nz/).
+
 Work in progress: This proof of concept aims to develop an early warning system to alert paragliders of approaching dangerous conditions.
 
 ## Setup
