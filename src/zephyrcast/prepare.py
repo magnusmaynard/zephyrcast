@@ -11,7 +11,7 @@ from datetime import datetime
 from geopy.distance import geodesic
 
 
-def prepare_data(target_station: str, nearby_stations: list[str]):
+def _read_data(station_names: list[str]):
     data_dir = project_config["data_dir"]
     json_files = glob.glob(os.path.join(data_dir, "*.json"))
     json_files.sort()
@@ -25,13 +25,12 @@ def prepare_data(target_station: str, nearby_stations: list[str]):
                     all_data = json.load(f)
 
                 # First find the target station data
-                all_stations = [target_station, *nearby_stations]
                 row = {}
                 for station_data in all_data:
                     station_name = station_data.get("name")
                     
-                    if station_name in all_stations:
-                        station_index = all_stations.index(station_name)
+                    if station_name in station_names:
+                        station_index = station_names.index(station_name)
                         wind_data = station_data.get("wind", {})
                         coords_data = station_data.get("coordinates", {})
 
@@ -54,7 +53,32 @@ def prepare_data(target_station: str, nearby_stations: list[str]):
     return pd.DataFrame(rows)
 
 
-def calculate_bearing(point1, point2):
+def _fill_missing(df, station_names: list[str]):
+    df_new = df.copy()
+
+    # List of features that should not change between rows.
+    static_features = [
+        "elev",
+        "lat",
+        "lon"
+    ]
+    
+    for i, station in enumerate(station_names):
+        for feature in static_features:
+            feature_col = f"{i}_{feature}"
+            
+            if feature_col not in df_new.columns:
+                continue
+                
+            valid_value = df_new[feature_col].dropna().iloc[0] if not df_new[feature_col].dropna().empty else None
+            
+            if valid_value is not None:
+                df_new[feature_col] = df_new[feature_col].fillna(valid_value)
+
+    return df_new
+
+
+def _calculate_bearing(point1, point2):
     """
     Calculate the bearing between two points on the earth
     :param point1: (lat, lon) of point 1
@@ -75,7 +99,7 @@ def calculate_bearing(point1, point2):
     return bearing
 
 
-def add_time_features(df):
+def _add_time_features(df):
     df_features = df.copy()
     
     # Convert timestamp to datetime and set as index
@@ -98,7 +122,7 @@ def add_time_features(df):
     return df_features
 
 
-def add_relative_features(df, nearby_station_count):
+def _add_relative_features(df, nearby_station_count):
     df_features = df.copy()
 
     # Add wind cyclical features
@@ -133,7 +157,7 @@ def add_relative_features(df, nearby_station_count):
         df_features[f"{station_id}_distance_from_target"] = distance
         
         # Calculate bearing from target to station
-        bearing = calculate_bearing(target_coords, station_coords)
+        bearing = _calculate_bearing(target_coords, station_coords)
         df_features[f"{station_id}_bearing_from_target"] = bearing
         
         # Add cyclical bearing features
@@ -166,7 +190,9 @@ def run():
     
     print(f"Preparing data for '{target_station}', with respect to {nearby_stations}")
 
-    df = prepare_data(target_station=target_station, nearby_stations=nearby_stations)
+    station_names = [target_station, *nearby_stations]
+    df = _read_data(station_names=station_names)
+    df = _fill_missing(df=df, station_names=station_names)
 
     if df.empty:
         print(f"No data found", file=sys.stderr)
@@ -174,8 +200,8 @@ def run():
     
     print("Adding features...")
     df_features = df.copy()
-    df_features = add_time_features(df=df_features)
-    df_features = add_relative_features(df=df_features, nearby_station_count=len(nearby_stations))
+    df_features = _add_time_features(df=df_features)
+    df_features = _add_relative_features(df=df_features, nearby_station_count=len(nearby_stations))
 
     # Sort for easier viewing
     df_features = df_features.reindex(sorted(df_features.columns), axis=1)
