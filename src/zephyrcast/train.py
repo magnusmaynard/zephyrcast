@@ -9,26 +9,13 @@ import matplotlib.pyplot as plt
 import random
 from zephyrcast import project_config
 
-TARGET_COLUMNS = ["0_wind_avg", "0_wind_gust", "0_temp"]
-FUTURE_STEPS = 3  # 30 minutes (3 x 10 minute intervals)
-LOOKBACK_STEPS = 6  # Use 6 previous readings (60 minutes)
-NUM_SAMPLES = 5
 
 
-def load_data_from_csv(csv_file):
-    """Load and prepare data from CSV"""
-    print(f"Loading data from {csv_file}...")
-
-    # Read the CSV file
+def _load_data_from_csv(csv_file):
     df = pd.read_csv(csv_file)
 
-    # Convert timestamp to datetime if it exists
-    if "timestamp" in df.columns:
-        df["datetime"] = pd.to_datetime(df["timestamp"], unit="s")
-        df.set_index("datetime", inplace=True)
-    elif "datetime" in df.columns:
-        df["datetime"] = pd.to_datetime(df["datetime"])
-        df.set_index("datetime", inplace=True)
+    df["t_stamp"] = pd.to_datetime(df["t_stamp"])
+    df.set_index("t_stamp", inplace=True)
 
     # Sort by datetime index
     df.sort_index(inplace=True)
@@ -37,17 +24,27 @@ def load_data_from_csv(csv_file):
     return df
 
 
-def add_lag_features(df, target_cols, future_steps):
+def _add_lag_features(df, target_cols: list[str], future_steps: int, lag_steps: int):
     """Create features and targets with a simplified approach"""
     # Create a copy for feature engineering
     df_features = df.copy()
 
-    # TODO: create lag features
-
     # Create lag features (configurable lookback)
     for col in target_cols:
-        for lag in range(1, LOOKBACK_STEPS + 1):
-            df_features[f"{col}_lag{lag}"] = df_features[col].shift(lag)
+        # Add basic lag features
+        for lag in range(1, lag_steps + 1):
+            df_features[f"{col}_lag_{lag}"] = df_features[col].shift(lag)
+            
+        # # Add rolling mean features
+        # df_features[f"{col}_ma_3"] = df_features[col].rolling(3).mean()
+        # df_features[f"{col}_ma_6"] = df_features[col].rolling(6).mean()
+        
+        # # Add rolling standard deviation
+        # df_features[f"{col}_std_3"] = df_features[col].rolling(3).std()
+        
+        # # Add rate of change features
+        # df_features[f"{col}_roc_1"] = df_features[col].pct_change(1)
+        # df_features[f"{col}_roc_3"] = df_features[col].pct_change(3)
 
     # Create future targets
     for col in target_cols:
@@ -60,8 +57,7 @@ def add_lag_features(df, target_cols, future_steps):
     print(f"After feature preparation: {len(df_clean)} rows")
     return df_clean
 
-
-def split_features_targets(df, target_cols, future_steps):
+def _split_features_targets(df, target_cols, future_steps):
     """Split data into features and targets"""
     # Identify target columns
     future_target_cols = []
@@ -86,9 +82,8 @@ def split_features_targets(df, target_cols, future_steps):
     return X, targets, feature_cols
 
 
-def train_models(X, targets, feature_cols):
-    """Train models for each target and future step using day-of-month based split"""
-    print("\nTraining models...")
+def _train_models(X, targets, feature_cols):
+    print("Training models...")
 
     models = {}
     metrics = {}
@@ -155,7 +150,7 @@ def train_models(X, targets, feature_cols):
     return models, metrics, scaler, X_train, X_test
 
 
-def visualize_results(X, targets, models, metrics, scaler):
+def _visualize_results(X, targets, models, metrics, scaler):
     """Visualize model performance and feature importance"""
 
     # Scale features for prediction
@@ -221,8 +216,8 @@ def visualize_results(X, targets, models, metrics, scaler):
     plt.savefig(os.path.join(project_config["output_dir"], "forecast_visualization.png"))
 
 
-def visualize_future_predictions(
-    X_test, df_raw, models, metrics, scaler, target_cols, future_steps, num_samples=5
+def _visualize_future_predictions(
+    X_test, df_raw, models, metrics, scaler, target_cols, future_steps, lag_steps, num_samples=5
 ):
     """Visualize predictions for random test samples with error bars, including past data points used for prediction"""
     # Get available test indices
@@ -266,7 +261,7 @@ def visualize_future_predictions(
             past_values = []
 
             # We use LOOKBACK_STEPS for the past data
-            for step in range(1, LOOKBACK_STEPS + 1):
+            for step in range(1, lag_steps + 1):
                 past_time = start_idx - pd.Timedelta(minutes=10 * step)
                 if past_time in df_raw.index:
                     past_times.insert(
@@ -329,7 +324,7 @@ def visualize_future_predictions(
             # Add RMSE to the title instead of error bars
             avg_rmse = sum(pred_errors) / len(pred_errors)
             plt.title(
-                f"Sample {i+1}: {col} prediction using {LOOKBACK_STEPS} past readings (Avg RMSE: {avg_rmse:.2f})"
+                f"Sample {i+1}: {col} prediction using {lag_steps} past readings (Avg RMSE: {avg_rmse:.2f})"
             )
             plt.xlabel("Time")
             plt.ylabel(col)
@@ -344,59 +339,64 @@ def visualize_future_predictions(
             plt.close()
 
 
-def save_models(models, scaler, feature_cols):
-    model_dir = project_config["models_dir"]
-    """Save trained models and related data"""
-    os.makedirs(model_dir, exist_ok=True)
+# def _save_models(models, scaler, feature_cols):
+#     model_dir = project_config["models_dir"]
+#     """Save trained models and related data"""
+#     os.makedirs(model_dir, exist_ok=True)
 
-    # Save models
-    for (col, step), model in models.items():
-        filename = os.path.join(model_dir, f"{col}_step{step}_model.joblib")
-        joblib.dump(model, filename)
+#     # Save models
+#     for (col, step), model in models.items():
+#         filename = os.path.join(model_dir, f"{col}_step{step}_model.joblib")
+#         joblib.dump(model, filename)
 
-    # Save scaler
-    scaler_filename = os.path.join(model_dir, "feature_scaler.joblib")
-    joblib.dump(scaler, scaler_filename)
+#     # Save scaler
+#     scaler_filename = os.path.join(model_dir, "feature_scaler.joblib")
+#     joblib.dump(scaler, scaler_filename)
 
-    # Save feature columns
-    feature_cols_filename = os.path.join(model_dir, "feature_columns.joblib")
-    joblib.dump(feature_cols, feature_cols_filename)
+#     # Save feature columns
+#     feature_cols_filename = os.path.join(model_dir, "feature_columns.joblib")
+#     joblib.dump(feature_cols, feature_cols_filename)
 
-    # Save configuration
-    config = {
-        "target_columns": TARGET_COLUMNS,
-        "future_steps": FUTURE_STEPS,
-        "lookback_steps": LOOKBACK_STEPS,
-    }
+#     # Save configuration
+#     config = {
+#         "target_columns": TARGET_COLUMNS,
+#         "future_steps": FUTURE_STEPS,
+#         "lookback_steps": LOOKBACK_STEPS,
+#     }
 
-    config_filename = os.path.join(model_dir, "model_config.joblib")
-    joblib.dump(config, config_filename)
+#     config_filename = os.path.join(model_dir, "model_config.joblib")
+#     joblib.dump(config, config_filename)
 
 
 def run():
-    # Change the input file path to the CSV file
-    df_raw = load_data_from_csv("output/rocky_gully_5_features.csv")
+    target_cols = ["0_wind_avg", "0_wind_gust", "0_wind_bearing", "0_temp"]
+    future_steps = 3  # 30 minutes (3 x 10 minute intervals)
+    lag_steps = 6  # Use 6 previous readings (60 minutes)
+    data = "output/rocky_gully_1_features.csv"
 
-    df_lagged = add_lag_features(df_raw, TARGET_COLUMNS, FUTURE_STEPS)
+    df = _load_data_from_csv(data)
 
-    X, targets, feature_cols = split_features_targets(
-        df_lagged, TARGET_COLUMNS, FUTURE_STEPS
+    df_lagged = _add_lag_features(df, target_cols=target_cols, future_steps=future_steps, lag_steps=lag_steps)
+
+    X, targets, feature_cols = _split_features_targets(
+        df_lagged, target_cols=target_cols, future_steps=future_steps
     )
 
-    models, metrics, scaler, X_train, X_test = train_models(X, targets, feature_cols)
+    models, metrics, scaler, X_train, X_test = _train_models(X, targets, feature_cols)
 
-    visualize_results(X, targets, models, metrics, scaler)
-    visualize_future_predictions(
+    _visualize_results(X, targets, models, metrics, scaler)
+    _visualize_future_predictions(
         X_test,
-        df_raw,
+        df,
         models,
         metrics,
         scaler,
-        TARGET_COLUMNS,
-        FUTURE_STEPS,
-        NUM_SAMPLES,
+        target_cols,
+        future_steps,
+        lag_steps,
+        3,
     )
 
-    save_models(models, scaler, feature_cols)
+    # _save_models(models, scaler, feature_cols)
 
     print("Training complete")

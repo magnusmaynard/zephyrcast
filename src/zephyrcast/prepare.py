@@ -181,11 +181,11 @@ def _add_relative_features(df, nearby_station_count):
 def run():
     target_station = "Rocky Gully"
     nearby_stations = [
-        "Flightpark",
-        "Coronet Summit",
-        "Coronet Tandems",
-        "Queenstown Airport",
-        "Crown Terrace",
+        # "Flightpark",
+        # "Coronet Summit",
+        # "Coronet Tandems",
+        # "Queenstown Airport",
+        # "Crown Terrace",
     ]
     
     print(f"Preparing data for '{target_station}', with respect to {nearby_stations}")
