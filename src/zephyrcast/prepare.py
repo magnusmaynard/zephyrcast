@@ -17,8 +17,8 @@ def _read_file(file_path, station_names):
         with open(file_path, "r") as f:
             all_data = json.load(f)
 
-        row = {"t_stamp": None}
-        station_name_set = set(station_names) 
+        row = {}
+        station_name_set = set(station_names)
 
         for station_data in all_data:
             station_name = station_data.get("name")
@@ -70,13 +70,11 @@ def _read_data(station_names: list[str]):
 def _clean(df):
     df_new = df.copy()
 
-    df["t_stamp"] = pd.to_datetime(df["t_stamp"])
-    df.set_index("t_stamp", inplace=True)
-
-    df.sort_index(inplace=True)
-
-    df_new.asfreq('10Min')
-
+    df_new["t_stamp"] = pd.to_datetime(df_new["t_stamp"], unit="s")
+    df_new.set_index("t_stamp", inplace=True)
+    df_new.sort_index(inplace=True)
+    df_new = df_new.dropna()
+    df_new.asfreq("10Min")
     df_new = df_new.bfill()
 
     return df_new
@@ -105,12 +103,6 @@ def _calculate_bearing(point1, point2):
 
 def _add_time_features(df):
     df_features = df.copy()
-
-    # Convert timestamp to datetime and set as index
-    df_features["t_stamp"] = pd.to_datetime(
-        df_features["t_stamp"], unit="s"
-    )  # Unix timestamp
-    df_features.set_index("t_stamp", inplace=True)
 
     # Add basic time features
     df_features["t_hour"] = df_features.index.hour
@@ -219,6 +211,8 @@ def run():
     print("Adding features...")
     df_features = df.copy()
     df_features = _clean(df=df_features)
+
+    print(df_features)
     df_features = _add_time_features(df=df_features)
     df_features = _add_relative_features(
         df=df_features, nearby_station_count=len(nearby_stations)
