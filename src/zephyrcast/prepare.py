@@ -76,16 +76,16 @@ def _clean(df):
     df_new.bfill(inplace=True)
 
     current_rows = df_new.shape[0]
-    df_new = df_new.dropna()
-    print(f"NaN rows removed: {current_rows - df_new.shape[0]}")
-
-    current_rows = df_new.shape[0]
     df_new = df_new[~df_new.index.duplicated(keep='first')]
     print(f"Duplicate rows removed: {current_rows - df_new.shape[0]}")
 
     current_rows = df_new.shape[0]
-    df_new = df_new.asfreq("10Min")
+    df_new = df_new.asfreq(freq="10Min", method="bfill")
     print(f"Missing rows filled: {df_new.shape[0] - current_rows}")
+
+    current_rows = df_new.shape[0]
+    df_new = df_new.dropna()
+    print(f"NaN rows removed: {current_rows - df_new.shape[0]}")
 
     return df_new
 
