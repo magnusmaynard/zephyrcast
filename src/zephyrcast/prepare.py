@@ -73,9 +73,19 @@ def _clean(df):
     df_new["t_stamp"] = pd.to_datetime(df_new["t_stamp"], unit="s")
     df_new.set_index("t_stamp", inplace=True)
     df_new.sort_index(inplace=True)
+    df_new.bfill(inplace=True)
+
+    current_rows = df_new.shape[0]
     df_new = df_new.dropna()
-    df_new.asfreq("10Min")
-    df_new = df_new.bfill()
+    print(f"NaN rows removed: {current_rows - df_new.shape[0]}")
+
+    current_rows = df_new.shape[0]
+    df_new = df_new[~df_new.index.duplicated(keep='first')]
+    print(f"Duplicate rows removed: {current_rows - df_new.shape[0]}")
+
+    current_rows = df_new.shape[0]
+    df_new = df_new.asfreq("10Min")
+    print(f"Missing rows filled: {df_new.shape[0] - current_rows}")
 
     return df_new
 
@@ -211,14 +221,12 @@ def run():
     print("Adding features...")
     df_features = df.copy()
     df_features = _clean(df=df_features)
-
-    print(df_features)
     df_features = _add_time_features(df=df_features)
     df_features = _add_relative_features(
         df=df_features, nearby_station_count=len(nearby_stations)
     )
 
-    # Sort for easier viewing
+    # Sort cols for easier viewing
     df_features = df_features.reindex(sorted(df_features.columns), axis=1)
 
     output_dir = project_config["output_dir"]
@@ -242,6 +250,6 @@ def run():
     df.to_csv(original_output_file, index=False)
     df_features.to_csv(feature_output_file, index=True)
 
-    print(f"Total results processed: {len(df)}")
+    print(f"Total rows: {len(df_features)}")
     print(f"Original data saved to '{original_output_file}'")
     print(f"Featured data saved to '{feature_output_file}'")
