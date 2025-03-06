@@ -70,8 +70,8 @@ def _read_data(station_names: list[str]):
 def _clean(df):
     df_new = df.copy()
 
-    df_new["t_stamp"] = pd.to_datetime(df_new["t_stamp"], unit="s")
-    df_new.set_index("t_stamp", inplace=True)
+    df_new["t_datetime"] = pd.to_datetime(df_new["t_stamp"], unit="s")
+    df_new.set_index("t_datetime", inplace=True)
     df_new.sort_index(inplace=True)
     df_new.bfill(inplace=True)
 
