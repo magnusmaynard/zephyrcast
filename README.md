@@ -10,13 +10,30 @@ poetry install
 poetry run keyring set zephyr_api_key zephyrcast
 ```
 
-## Run
+## Usage
+First train the model on all of the downloaded data:
 ```
-poetry run fetch
-poetry run prepare
-poetry run train
+poetry run zcast fetch
+poetry run zcast prepare
+poetry run zcast train
 ```
+
+Predict using a defined dataset:
+```
+poetry run zcast predict --files input_data.json
+```
+
+Or predict continuously using live data:
+```
+poetry run zcast predict --live
+```
+
+See help for more details on the available commands:
+```
+poetry run zcast --help
+```
+
 
 ## Links
 - [zephyr-model repo](https://github.com/lewinfox/zephyr-model) - Used for initial experimentation and as an example how to use Zephyr API and data.
-- [zephyr repo](https://github.com/kyzh0/zephyr) - Implementation details on Zephyr API.
+- [zephyr repo](https://github.com/kyzh0/zephyr) - Implementation details on Zephyr API.e

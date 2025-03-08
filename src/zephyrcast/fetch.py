@@ -70,6 +70,6 @@ async def _fetch_all_data():
             result = await asyncio.gather(*tasks)
 
 
-def run():
+def fetch():
     asyncio.run(_fetch_all_data())
     print("Download complete")

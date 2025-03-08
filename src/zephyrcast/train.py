@@ -1,29 +1,19 @@
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error
 from skforecast.direct import ForecasterDirect
 from skforecast.preprocessing import RollingFeatures
-from sklearn.model_selection import train_test_split
 from lightgbm import LGBMRegressor
 import os
 from datetime import datetime
 from zephyrcast import project_config
-import ipdb
-
-from skforecast.datasets import fetch_dataset
 from skforecast.preprocessing import RollingFeatures
 from skforecast.recursive import ForecasterRecursive
 from skforecast.model_selection import TimeSeriesFold
 from skforecast.model_selection import backtesting_forecaster
 from skforecast.utils import save_forecaster
-from skforecast.utils import load_forecaster
 from sklearn.feature_selection import RFECV
-from sklearn.feature_selection import SequentialFeatureSelector
-from sklearn.feature_selection import SelectFromModel
 from skforecast.feature_selection import select_features
-from skforecast.feature_selection import select_features_multiseries
-import json
 
 
 def _load_data_from_csv(csv_file):
@@ -194,7 +184,7 @@ def _test_model(
     print("Backtesting error (MSE):", metric["mean_squared_error"][0])
 
 
-def run():
+def train():
     forecast_feature = "0_temp"
     data_train, data_test = _get_train_test_data(
         filename="rocky_gully_features.csv",
