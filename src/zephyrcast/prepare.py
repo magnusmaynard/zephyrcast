@@ -243,7 +243,7 @@ def prepare():
     # Save featured data
     feature_filename = f"{target_station.replace(' ', '_').lower()}"
     if len(nearby_stations) > 0:
-        feature_filename += f"_{len(nearby_stations)}"
+        feature_filename += f"_near_{len(nearby_stations)}"
     feature_filename += "_features.csv"
     feature_output_file = os.path.join(output_dir, feature_filename)
 

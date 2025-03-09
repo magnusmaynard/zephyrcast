@@ -15,18 +15,7 @@ from skforecast.utils import save_forecaster
 from sklearn.feature_selection import RFECV
 from skforecast.feature_selection import select_features
 
-
-def _load_data_from_csv(csv_file):
-    df = pd.read_csv(csv_file)
-
-    df["t_datetime"] = pd.to_datetime(df["t_datetime"])
-    df.set_index("t_datetime", inplace=True)
-
-    df = df.asfreq("10Min")
-    df = df.sort_index()
-
-    print(f"Data loaded: {len(df)} rows from {df.index.min()} to {df.index.max()}")
-    return df
+from zephyrcast.utils import load_data_from_csv
 
 
 def _find_best_features(data_train, forecast_feature, exog_features):
@@ -68,7 +57,7 @@ def _find_best_features(data_train, forecast_feature, exog_features):
 
 def _get_train_test_data(filename: str, train_split_date: str, forecast_feature: str):
     output_dir = project_config["output_dir"]
-    data = _load_data_from_csv(os.path.join(output_dir, filename))
+    data = load_data_from_csv(os.path.join(output_dir, filename))
 
     data_train = data.loc[:train_split_date]
     data_test = data.loc[train_split_date:]
@@ -94,7 +83,7 @@ def _save_model(model, forecast_feature):
         model.creation_date, "%Y-%m-%d %H:%M:%S"
     ).strftime("%Y%m%d_%H%M%S")
 
-    model_filename = f"zephyrcast_{creation_date}_x{forecast_feature}_exo{len(model.exog_names_in_)}_l{model.lags}"
+    model_filename = f"zephyrcast_{creation_date}_X{forecast_feature}_EXO{len(model.exog_names_in_)}_L{len(model.lags)}"
 
     models_dir = project_config["models_dir"]
     model_path = os.path.join(models_dir, f"{model_filename}.joblib")
@@ -123,6 +112,7 @@ def _train_model(
         lags=lags,
         steps=steps,
         n_jobs="auto",
+        forecaster_id = forecast_feature,
     )
 
     print("Fitting...")
@@ -185,9 +175,9 @@ def _test_model(
 
 
 def train():
-    forecast_feature = "0_temp"
+    forecast_feature = "0_wind_avg"
     data_train, data_test = _get_train_test_data(
-        filename="rocky_gully_features.csv",
+        filename="rocky_gully_near_6_features.csv",
         train_split_date="2025-02-07 23:59:00",
         forecast_feature=forecast_feature,
     )
@@ -195,6 +185,7 @@ def train():
     auto_feature_selection = False
 
     lags = 24
+    steps = 6 # 1 hour
     window_features = RollingFeatures(stats=["mean", "sum"], window_sizes=[15, 15])
     exog_features = list(data_train.drop(columns=forecast_feature))
     if auto_feature_selection:
@@ -210,7 +201,7 @@ def train():
         exog_features=exog_features,
         window_features=window_features,
         lags=lags,
-        steps=6,
+        steps=steps,
     )
 
     _save_model(model=model, forecast_feature=forecast_feature)

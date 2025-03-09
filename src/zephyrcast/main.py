@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import click
+from datetime import datetime
 
 
-@click.group(help="Command line tool for using the zephyrcast model. This model is for local, short-term weather forecasting specifically for paragliding safety, using solely weather station data from Zephyr.")
+@click.group(
+    help="Command line tool for using the zephyrcast model. This model is for local, short-term weather forecasting specifically for paragliding safety, using solely weather station data from Zephyr."
+)
 def cli():
     pass
 
@@ -31,28 +34,25 @@ def train():
 @cli.command(help="Run predictions using the trained zephyrcast model on new data.")
 @click.option("--live", is_flag=True, help="Predict on live data from the Zephyr API.")
 @click.option(
-    "--files",
-    "-f",
-    multiple=True,
-    type=click.Path(
-        exists=True, file_okay=True, dir_okay=False, readable=True, path_type=str
-    ),
-    help="Predict on JSON file(s).",
+    "--date",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"]),
+    help="Start datetime for prediction (format: YYYY-MM-DD, YYYY-MM-DDThh:mm:ss, or YYYY-MM-DD hh:mm:ss).",
 )
-def predict(live, files):
-    from zephyrcast.predict import predict_live, predict_files
+def predict(live, date):
+    from zephyrcast.predict import predict_files, predict_live
 
-    if live:
-        click.echo("Running in monitoring mode for predictions")
-        if files:
-            click.echo("--files option is ignored in live mode")
+    if date:
+        start_datetime = (
+            date if isinstance(date, datetime) else datetime.fromisoformat(date)
+        )
 
+        predict_files(start_date=start_datetime)
+
+        click.echo(f"Using start datetime: {start_datetime}")
+
+    elif live:
+        click.echo("Running in live mode for predictions")
         predict_live()
-
-    elif files:
-        click.echo(f"Processing {len(files)} file(s) for prediction:")
-
-        predict_files()
     else:
         raise click.UsageError("No prediction option specified.")
 
@@ -62,6 +62,7 @@ def clean():
     from zephyrcast.clean import clean
 
     clean()
+
 
 if __name__ == "__main__":
     cli()
