@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error
 from skforecast.direct import ForecasterDirect
+from skforecast.direct import ForecasterDirectMultiVariate
 from skforecast.preprocessing import RollingFeatures
 from lightgbm import LGBMRegressor
 import os
@@ -10,52 +11,55 @@ from zephyrcast import project_config
 from skforecast.preprocessing import RollingFeatures
 from skforecast.recursive import ForecasterRecursive
 from skforecast.model_selection import TimeSeriesFold
-from skforecast.model_selection import backtesting_forecaster
+from skforecast.model_selection import backtesting_forecaster_multiseries
 from skforecast.utils import save_forecaster
 from sklearn.feature_selection import RFECV
 from skforecast.feature_selection import select_features
+import ipdb
 
 from zephyrcast.utils import load_data_from_csv
 
 
-def _find_best_features(data_train, forecast_feature, exog_features):
-    print("Find best features...")
-    window_features = RollingFeatures(
-        stats=["mean", "mean", "sum"], window_sizes=[24, 48, 24]
-    )
+# def _find_best_features(data_train, forecast_feature, exog_features):
+#     print("Find best features...")
+#     window_features = RollingFeatures(
+#         stats=["mean", "mean", "sum"], window_sizes=[24, 48, 24]
+#     )
 
-    forecaster = ForecasterRecursive(
-        regressor=LGBMRegressor(
-            n_estimators=900, random_state=15926, max_depth=7, verbose=-1
-        ),
-        lags=48,
-        window_features=window_features,
-    )
+#     forecaster = ForecasterRecursive(
+#         regressor=LGBMRegressor(
+#             n_estimators=900, random_state=15926, max_depth=7, verbose=-1
+#         ),
+#         lags=48,
+#         window_features=window_features,
+#     )
 
-    regressor = LGBMRegressor(
-        n_estimators=100, max_depth=5, random_state=15926, verbose=-1
-    )
+#     regressor = LGBMRegressor(
+#         n_estimators=100, max_depth=5, random_state=15926, verbose=-1
+#     )
 
-    selector = RFECV(
-        estimator=regressor, step=1, cv=3, min_features_to_select=25, n_jobs=-1
-    )
+#     selector = RFECV(
+#         estimator=regressor, step=1, cv=3, min_features_to_select=25, n_jobs=-1
+#     )
 
-    selected_lags, selected_window_features, selected_exog_features = select_features(
-        forecaster=forecaster,
-        selector=selector,
-        y=data_train[forecast_feature],
-        exog=data_train[exog_features],
-        select_only=None,
-        force_inclusion=None,
-        subsample=0.5,
-        random_state=123,
-        verbose=True,
-    )
+#     selected_lags, selected_window_features, selected_exog_features = select_features(
+#         forecaster=forecaster,
+#         selector=selector,
+#         y=data_train[forecast_feature],
+#         exog=data_train[exog_features],
+#         select_only=None,
+#         force_inclusion=None,
+#         subsample=0.5,
+#         random_state=123,
+#         verbose=True,
+#     )
 
-    return selected_lags, selected_window_features, selected_exog_features
+#     return selected_lags, selected_window_features, selected_exog_features
 
 
-def _get_train_test_data(filename: str, train_split_date: str, forecast_feature: str):
+def _get_train_test_data(
+    filename: str, train_split_date: str, forecast_feature: str, save_plots=False
+):
     output_dir = project_config["output_dir"]
     data = load_data_from_csv(os.path.join(output_dir, filename))
 
@@ -69,21 +73,32 @@ def _get_train_test_data(filename: str, train_split_date: str, forecast_feature:
         f"Test: {data_test.index.min()} -> {data_test.index.max()} (n={len(data_test)})"
     )
 
-    fig, ax = plt.subplots(figsize=(6, 3))
-    data_train[forecast_feature].plot(ax=ax, label="train")
-    data_test[forecast_feature].plot(ax=ax, label="test")
-    ax.legend()
-    plt.savefig(os.path.join(output_dir, "data.png"), dpi=300)
+    if save_plots:
+        graphs = 20
+        fig, axes = plt.subplots(nrows=graphs, ncols=1, figsize=(9, 5), sharex=True)
+
+        for i, col in enumerate(data.columns[:graphs]):
+            print(f"Plotting: {col}")
+            data_train[col].plot(ax=axes[i], label="train")
+            data_test[col].plot(ax=axes[i], label="test")
+            axes[i].set_ylabel("")
+            axes[i].set_title(col)
+            axes[i].legend(loc="upper right")
+
+        # fig.tight_layout()
+        plt.savefig(os.path.join(output_dir, "forecast_results.png"), dpi=300)
 
     return data_train, data_test
 
 
-def _save_model(model, forecast_feature):
+def _save_model(model):
     creation_date = datetime.strptime(
         model.creation_date, "%Y-%m-%d %H:%M:%S"
     ).strftime("%Y%m%d_%H%M%S")
 
-    model_filename = f"zephyrcast_{creation_date}_X{forecast_feature}_EXO{len(model.exog_names_in_)}_L{len(model.lags)}"
+    ipdb.set_trace()
+
+    model_filename = f"zephyrcast_{creation_date}_X{model.level}_S{len(model.series_names_in_)}_L{len(model.lags)}"
 
     models_dir = project_config["models_dir"]
     model_path = os.path.join(models_dir, f"{model_filename}.joblib")
@@ -94,17 +109,17 @@ def _save_model(model, forecast_feature):
 def _train_model(
     data_train,
     forecast_feature: str,
-    exog_features: str,
+    series_features: str,
     window_features,
     lags: int,
     steps: int,
 ):
     print(f"Forecast feature: {forecast_feature}")
-    print(f"Exo features: {exog_features}")
+    print(f"Series features: {series_features}")
     print(f"Window features: {window_features}")
     print(f"Lags: {lags}")
 
-    model = ForecasterDirect(
+    model = ForecasterDirectMultiVariate(
         regressor=LGBMRegressor(
             n_estimators=900, random_state=15926, max_depth=7, verbose=-1
         ),
@@ -112,11 +127,11 @@ def _train_model(
         lags=lags,
         steps=steps,
         n_jobs="auto",
-        forecaster_id = forecast_feature,
+        level=forecast_feature,
     )
 
     print("Fitting...")
-    model.fit(y=data_train[forecast_feature], exog=data_train[exog_features])
+    model.fit(series=data_train)
 
     feature_importance_step = 1
     top_features = 10
@@ -126,21 +141,19 @@ def _train_model(
     return model
 
 
-def _test_model(
-    model, data_train, data_test, forecast_feature, exog_features, save_plots
-):
+def _test_model(model, data_train, data_test, save_plots):
     print("Testing...")
     output_dir = project_config["output_dir"]
-    predictions = model.predict(exog=data_test[exog_features])
-    actuals = data_test.loc[predictions.index][forecast_feature]
+    predictions = model.predict()
+    actuals = data_test.loc[predictions.index][model.level]
     error_mse = mean_squared_error(y_true=actuals, y_pred=predictions)
     print(f"Test error (MSE): {error_mse}")
 
     if save_plots:
         context = 500
         fig, ax = plt.subplots(figsize=(6, 3))
-        data_train[-context:][forecast_feature].plot(ax=ax, label="train")
-        data_test[forecast_feature].plot(ax=ax, label="test")
+        data_train[-context:][model.level].plot(ax=ax, label="train")
+        data_test[model.level].plot(ax=ax, label="test")
         predictions.plot(ax=ax, label="predictions")
         ax.legend()
 
@@ -160,18 +173,20 @@ def _test_model(
         allow_incomplete_fold=True,
     )
 
-    metric, predictions = backtesting_forecaster(
+    metrics, predictions = backtesting_forecaster_multiseries(
         forecaster=model,
-        y=data_test[forecast_feature],
-        exog=data_test[exog_features],
+        series=data_test,
+        levels=model.level,
         cv=cv,
-        metric="mean_squared_error",
+        metric="mean_absolute_error",
         n_jobs="auto",
         verbose=False,
         show_progress=True,
     )
 
-    print("Backtesting error (MSE):", metric["mean_squared_error"][0])
+    # print(metrics)
+    # print(predictions)
+    print("Backtesting error (MSE):", metrics["mean_squared_error"][0])
 
 
 def train():
@@ -185,32 +200,30 @@ def train():
     auto_feature_selection = False
 
     lags = 24
-    steps = 6 # 1 hour
+    steps = 6  # 1 hour
     window_features = RollingFeatures(stats=["mean", "sum"], window_sizes=[15, 15])
-    exog_features = list(data_train.drop(columns=forecast_feature))
-    if auto_feature_selection:
-        lags, window_features, exog_features = _find_best_features(
-            data_train=data_train,
-            forecast_feature=forecast_feature,
-            exog_features=exog_features,
-        )
+    series_features = list(data_train.drop(columns=forecast_feature))
+    # if auto_feature_selection:
+    #     lags, window_features, exog_features = _find_best_features(
+    #         data_train=data_train,
+    #         forecast_feature=forecast_feature,
+    #         exog_features=exog_features,
+    #     )
 
     model = _train_model(
         data_train=data_train,
         forecast_feature=forecast_feature,
-        exog_features=exog_features,
+        series_features=series_features,
         window_features=window_features,
         lags=lags,
         steps=steps,
     )
 
-    _save_model(model=model, forecast_feature=forecast_feature)
+    _save_model(model=model)
 
     _test_model(
         model=model,
         data_train=data_train,
         data_test=data_test,
-        forecast_feature=forecast_feature,
-        exog_features=exog_features,
         save_plots=True,
     )

@@ -130,37 +130,20 @@ def predict_files(start_date: datetime):
 
     last_window_end = start_date - freq
 
-    last_window_data = data_all.loc[last_window_start:last_window_end][
-        model.forecaster_id
-    ]
-
-    # exog_end = start_date + freq
-
-    # exog_start = start_date
-
-    exog_window_data = data_all.loc[last_window_start + freq:last_window_end][
-        model.exog_names_in_
-    ]
-
-    # exog_data = data_all.loc[exog_start:exog_end][model.exog_names_in_]
+    last_window_data = data_all.loc[last_window_start:last_window_end]
 
     print(f"Last window: {last_window_start} to {last_window_end}")
-    # print(f"Prediction window: {start_date} to {exog_end}")
 
-    predictions = model.predict(last_window=last_window_data, exog=exog_window_data)
-    actuals = data_all.loc[predictions.index, model.forecaster_id]
-
-
-
-    print(predictions)
+    predictions = model.predict(last_window=last_window_data)[ model.level]
+    actuals = data_all.loc[predictions.index, model.level]
 
     plot_predictions_vs_actuals(
         predictions=predictions,
         actuals=actuals,
         historical_data=data_all.loc[
-            last_window_start:last_window_end, model.forecaster_id
+            last_window_start:last_window_end, model.level
         ],
         start_date=start_date,
-        target_variable=model.forecaster_id,
+        target_variable=model.level,
         save_plot=True,
     )

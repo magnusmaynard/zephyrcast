@@ -1,4 +1,4 @@
-import pandas as pd
+import pandas as pd 
 
 def load_data_from_csv(file: str) -> pd.DataFrame:
     df = pd.read_csv(file)
