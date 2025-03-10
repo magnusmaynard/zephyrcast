@@ -1,3 +1,4 @@
+from datetime import datetime
 import pandas as pd
 from zephyrcast import project_config
 import os
@@ -69,3 +70,22 @@ def find_latest_model_path():
     latest_model_path = os.path.join(models_dir, model_files[0])
     print(f"Loading latest model: {latest_model_path}")
     return latest_model_path
+
+def get_train_test_data(
+    filename: str,
+    train_split_date: datetime,
+):
+    output_dir = project_config["output_dir"]
+    data = load_data_from_csv(os.path.join(output_dir, filename))
+
+    data_train = data.loc[:train_split_date]
+    data_test = data.loc[train_split_date:]
+
+    print(
+        f"Train: {data_train.index.min()} -> {data_train.index.max()} (n={len(data_train)})"
+    )
+    print(
+        f"Test: {data_test.index.min()} -> {data_test.index.max()} (n={len(data_test)})"
+    )
+
+    return data_train, data_test
