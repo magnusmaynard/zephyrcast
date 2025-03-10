@@ -18,14 +18,9 @@ poetry run zcast prepare
 poetry run zcast train
 ```
 
-Predict using a defined dataset:
+Predict on downloaded dataset:
 ```
-poetry run zcast predict --files input_data.json
-```
-
-Or predict continuously using live data:
-```
-poetry run zcast predict --live
+poetry run zcast predict --date "2025-02-15 12:30:00"
 ```
 
 See help for more details on the available commands:
