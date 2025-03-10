@@ -1,17 +1,20 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.discriminant_analysis import StandardScaler
 from sklearn.metrics import mean_squared_error
 from skforecast.direct import ForecasterDirect
 from skforecast.direct import ForecasterDirectMultiVariate
 from skforecast.preprocessing import RollingFeatures
 from lightgbm import LGBMRegressor
 import os
+import numpy as np
 from datetime import datetime
 from zephyrcast import project_config
 from skforecast.preprocessing import RollingFeatures
 from skforecast.recursive import ForecasterRecursive
 from skforecast.model_selection import TimeSeriesFold
 from skforecast.model_selection import backtesting_forecaster_multiseries
+from skforecast.model_selection import bayesian_search_forecaster_multiseries
 from skforecast.utils import save_forecaster
 from sklearn.feature_selection import RFECV
 from skforecast.feature_selection import select_features
@@ -20,41 +23,56 @@ import ipdb
 from zephyrcast.utils import load_data_from_csv
 
 
-# def _find_best_features(data_train, forecast_feature, exog_features):
-#     print("Find best features...")
-#     window_features = RollingFeatures(
-#         stats=["mean", "mean", "sum"], window_sizes=[24, 48, 24]
-#     )
+def _find_best_features(data_train, forecast_feature):
+    steps = 6
+    print("Find best features...")
+    forecaster = ForecasterDirectMultiVariate(
+        regressor=LGBMRegressor(random_state=123, verbose=-1),
+        level=forecast_feature,
+        steps=steps,
+        lags=7,
+        window_features=RollingFeatures(stats=["mean"], window_sizes=[7]),
+    )
 
-#     forecaster = ForecasterRecursive(
-#         regressor=LGBMRegressor(
-#             n_estimators=900, random_state=15926, max_depth=7, verbose=-1
-#         ),
-#         lags=48,
-#         window_features=window_features,
-#     )
+    def search_space(trial):
+        search_space = {
+            "lags": trial.suggest_categorical("lags", [6, 24]),
+            "n_estimators": trial.suggest_int("n_estimators", 10, 1000),
+            'max_depth': trial.suggest_int("max_depth", 3, 10),
+        }
 
-#     regressor = LGBMRegressor(
-#         n_estimators=100, max_depth=5, random_state=15926, verbose=-1
-#     )
+        return search_space
 
-#     selector = RFECV(
-#         estimator=regressor, step=1, cv=3, min_features_to_select=25, n_jobs=-1
-#     )
+    initial_train_data = data_train.index.max() - pd.Timedelta(days=60)
+    initial_train_size = len(data_train.loc[:initial_train_data])
 
-#     selected_lags, selected_window_features, selected_exog_features = select_features(
-#         forecaster=forecaster,
-#         selector=selector,
-#         y=data_train[forecast_feature],
-#         exog=data_train[exog_features],
-#         select_only=None,
-#         force_inclusion=None,
-#         subsample=0.5,
-#         random_state=123,
-#         verbose=True,
-#     )
+    cv = TimeSeriesFold(
+        steps=steps,
+        initial_train_size=initial_train_size,
+        refit=False,
+        allow_incomplete_fold=True,
+    )
 
-#     return selected_lags, selected_window_features, selected_exog_features
+    results, best_trial = bayesian_search_forecaster_multiseries(
+        forecaster=forecaster,
+        series=data_train,
+        exog=None,
+        search_space=search_space,
+        cv=cv,
+        metric="mean_absolute_error",
+        aggregate_metric="weighted_average",
+        n_trials=10,
+        random_state=123,
+        return_best=False,
+        n_jobs="auto",
+        verbose=False,
+        show_progress=True,
+        kwargs_create_study={},
+        kwargs_study_optimize={},
+    )
+
+    print(results, best_trial)
+    return results, best_trial
 
 
 def _get_train_test_data(
@@ -119,9 +137,21 @@ def _train_model(
     print(f"Window features: {window_features}")
     print(f"Lags: {lags}")
 
+    # # Trial 1
+    # model = ForecasterDirectMultiVariate(
+    #     regressor=LGBMRegressor(
+    #         n_estimators=900, random_state=15926, max_depth=7, verbose=-1
+    #     ),
+    #     window_features=window_features,
+    #     lags=24,
+    #     steps=steps,
+    #     n_jobs="auto",
+    #     level=forecast_feature,
+    # )
+    ## Trial 2
     model = ForecasterDirectMultiVariate(
         regressor=LGBMRegressor(
-            n_estimators=900, random_state=15926, max_depth=7, verbose=-1
+            n_estimators=101, random_state=15926, max_depth=6, verbose=-1
         ),
         window_features=window_features,
         lags=lags,
@@ -186,7 +216,7 @@ def _test_model(model, data_train, data_test, save_plots):
 
     # print(metrics)
     # print(predictions)
-    print("Backtesting error (MSE):", metrics["mean_squared_error"][0])
+    print("Backtesting error (MSE):", metrics)
 
 
 def train():
@@ -197,33 +227,33 @@ def train():
         forecast_feature=forecast_feature,
     )
 
-    auto_feature_selection = False
+    auto_parameter_tuning = False
 
     lags = 24
     steps = 6  # 1 hour
     window_features = RollingFeatures(stats=["mean", "sum"], window_sizes=[15, 15])
     series_features = list(data_train.drop(columns=forecast_feature))
-    # if auto_feature_selection:
-    #     lags, window_features, exog_features = _find_best_features(
-    #         data_train=data_train,
-    #         forecast_feature=forecast_feature,
-    #         exog_features=exog_features,
-    #     )
+    if auto_parameter_tuning:
+        results, best_trial = _find_best_features(
+            data_train=data_train, forecast_feature=forecast_feature
+        )
+        ipdb.set_trace()
+    else:
 
-    model = _train_model(
-        data_train=data_train,
-        forecast_feature=forecast_feature,
-        series_features=series_features,
-        window_features=window_features,
-        lags=lags,
-        steps=steps,
-    )
+        model = _train_model(
+            data_train=data_train,
+            forecast_feature=forecast_feature,
+            series_features=series_features,
+            window_features=window_features,
+            lags=lags,
+            steps=steps,
+        )
 
-    _save_model(model=model)
+        _save_model(model=model)
 
-    _test_model(
-        model=model,
-        data_train=data_train,
-        data_test=data_test,
-        save_plots=True,
-    )
+        _test_model(
+            model=model,
+            data_train=data_train,
+            data_test=data_test,
+            save_plots=True,
+        )
