@@ -33,8 +33,9 @@ class ModelHarness:
         print("Training...")
         self._model.train(data_train=self._data_train)
 
-        # print("Evaluating...")
-        # self._model.eval(data_test=self._data_test)
+    def evaluate(self):
+        print("Evaluating...")
+        self._model.evaluate(data_test=self._data_test, save_plots=True)
 
     def predict(
         self,

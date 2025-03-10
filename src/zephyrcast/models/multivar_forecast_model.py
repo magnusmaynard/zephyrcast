@@ -197,19 +197,24 @@ class MultiVariantForecastModel:
             save_plot=True,
         )
 
-    def eval(self, data_test, save_plots):
-        print("Testing...")
+    def evaluate(self, data_test: pd.DataFrame, save_plots: bool = False) -> None:
+        print("Evaluating...")
         output_dir = project_config["output_dir"]
-        predictions = self._model.predict(exog=exog_test)
+
+        data, data_const = extract_constant_features(data_test)
+        data_exog = pd.concat([data_const] * len(data), ignore_index=True)
+        data_exog.index = data.index
+
+        predictions = self._model.predict(exog=data_exog)
         actuals = data_test.loc[predictions.index][self._model.level]
         error_mse = mean_squared_error(y_true=actuals, y_pred=predictions)
         print(f"Test error (MSE): {error_mse}")
 
         if save_plots:
             context = 500
-            fig, ax = plt.subplots(figsize=(6, 3))
-            # data_train[-context:][self._model.level].plot(ax=ax, label="train")
-            data_test[self._model.level].plot(ax=ax, label="test")
+            _, ax = plt.subplots(figsize=(6, 3))
+            data[-context:][self._model.level].plot(ax=ax, label="train")
+            data[self._model.level].plot(ax=ax, label="test")
             predictions.plot(ax=ax, label="predictions")
             ax.legend()
 
@@ -217,9 +222,9 @@ class MultiVariantForecastModel:
 
         print("Backtesting...")
 
-        last_date = data_test.index.max()
+        last_date = data.index.max()
         backtest_date = last_date - pd.Timedelta(days=10)
-        initial_train_size = len(data_test.loc[:backtest_date])
+        initial_train_size = len(data.loc[:backtest_date])
         cv = TimeSeriesFold(
             steps=self._model.steps,
             initial_train_size=initial_train_size,
@@ -228,11 +233,11 @@ class MultiVariantForecastModel:
             gap=0,
             allow_incomplete_fold=True,
         )
-
+        
         metrics, predictions = backtesting_forecaster_multiseries(
             forecaster=self._model,
-            series=data_test,
-            exog=exog_test,
+            series=data,
+            exog=data_exog,
             levels=self._model.level,
             cv=cv,
             metric="mean_absolute_error",

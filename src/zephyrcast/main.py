@@ -29,6 +29,10 @@ def prepare():
 def train():
     model.train()
 
+@cli.command(help="Evaluate zephyrcast model on prepared data.")
+def evaluate():
+    model.evaluate()
+
 @cli.command(help="Run predictions using the trained zephyrcast model on new data.")
 @click.option("--live", is_flag=True, help="Predict on live data from the Zephyr API.")
 @click.option(
