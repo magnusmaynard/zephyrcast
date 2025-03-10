@@ -1,6 +1,6 @@
-data/
-data_*/
-output/
-models/
+/data/
+/data_*/
+/output/
+/models/
 *.pyc
 __pycache__/
