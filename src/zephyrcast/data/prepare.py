@@ -199,7 +199,7 @@ def _add_relative_features(df, nearby_station_count):
     return df_features
 
 
-def prepare():
+def prepare_data():
     target_station = "Rocky Gully"
     nearby_stations = [
         "Flightpark",

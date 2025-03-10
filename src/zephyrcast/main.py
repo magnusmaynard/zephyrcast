@@ -3,6 +3,8 @@ import click
 from datetime import datetime
 
 from zephyrcast.models.multivar_forecast_model import MultiVariantForecastModel
+from zephyrcast.data.fetch import fetch_data
+from zephyrcast.data.prepare import prepare_data
 
 model = MultiVariantForecastModel()
 
@@ -15,16 +17,12 @@ def cli():
 
 @cli.command(help="Fetch all raw data from Zephyr API and store locally.")
 def fetch():
-    from zephyrcast.fetch import fetch
-
-    fetch()
+    fetch_data()
 
 
 @cli.command(help="Prepare and preprocess the data for training.")
 def prepare():
-    from zephyrcast.prepare import prepare
-
-    prepare()
+    prepare_data()
 
 
 @cli.command(help="Train zephyrcast model on prepared data.")
@@ -55,9 +53,7 @@ def predict(live, date):
 
 @cli.command(help="Clean any data and models.")
 def clean():
-    from zephyrcast.clean import clean
-
-    clean()
+    raise NotImplementedError("Clean not implemented")
 
 
 if __name__ == "__main__":

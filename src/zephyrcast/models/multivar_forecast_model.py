@@ -17,7 +17,7 @@ from skforecast.utils import save_forecaster
 import ipdb
 from skforecast.utils import load_forecaster
 
-from zephyrcast.utils import (
+from zephyrcast.data.utils import (
     extract_constant_features,
     find_latest_model_path,
     load_data_from_csv,
