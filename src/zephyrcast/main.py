@@ -45,7 +45,7 @@ def train(arch):
     model.train()
 
 
-@cli.command(help="Evaluate zephyrcast model on prepared data.")
+@cli.command(help="Measure performance of zephyrcast model using backtesting, on prepared data.")
 @click.option(
     "--arch",
     type=click.Choice(ARCH_OPTIONS),
@@ -57,7 +57,7 @@ def evaluate(arch):
     model.evaluate()
 
 
-@cli.command(help="Run predictions using the trained zephyrcast model on new data.")
+@cli.command(help="Run predictions using the trained zephyrcast model on prepared data.")
 @click.option(
     "--live", is_flag=True, help="Predict on live data from the Zephyr API."
 )
