@@ -37,8 +37,8 @@ class ModelHarness:
             filename=self._data_filename, train_split_date=self._data_split_date
         )
 
-    def _plot_predictions_vs_actuals(
-        self, predictions: pd.DataFrame, actuals: pd.DataFrame, start_date: datetime
+    def _plot_predictions(
+        self, predictions: pd.DataFrame, actuals: pd.DataFrame, start_date: datetime, model_name: str
     ) -> None:
         context = 144  # 24 hours
         historical_data = self._data_test.loc[
@@ -94,7 +94,7 @@ class ModelHarness:
 
         # Customize the plot
         plt.title(
-            f"Forecast vs Actual Values for {self._target}\nMAE: {mae:.4f}, RMSE: {rmse:.4f}"
+            f"Forecast vs Actual Values for {self._target}\nMAE: {mae:.4f}, RMSE: {rmse:.4f}\nModel: {model_name}"
         )
         plt.xlabel("Date")
         plt.ylabel(self._target)
@@ -116,8 +116,8 @@ class ModelHarness:
 
         plt.tight_layout()
 
-    def _plot_evaluation_errors(
-        self, results_df: pd.DataFrame, start_date: datetime, end_date: datetime
+    def _plot_evaluation_results(
+        self, results_df: pd.DataFrame, start_date: datetime, end_date: datetime, model_name: str
     ) -> None:
         plt.figure(figsize=(14, 10))
 
@@ -179,7 +179,7 @@ class ModelHarness:
 
         # Customize the plot
         plt.suptitle(
-            f'Evaluation Results: {start_date.strftime("%Y-%m-%d")} to {end_date.strftime("%Y-%m-%d")}',
+            f'Evaluation Results: {start_date.strftime("%Y-%m-%d")} to {end_date.strftime("%Y-%m-%d")}\nModel: {model_name}',
             fontsize=16,
         )
 
@@ -278,7 +278,7 @@ class ModelHarness:
                 else f"  {metric}: {value}"
             )
 
-        self._plot_evaluation_errors(results_df, eval_dates[0], eval_dates[-1])
+        self._plot_evaluation_results(results_df, eval_dates[0], eval_dates[-1], model_name=self._model.name)
 
         return metrics
 
@@ -307,6 +307,6 @@ class ModelHarness:
         mse = np.mean((predictions.values - actuals.values) ** 2)
         print(f"MSE: {mse:.4f}")
 
-        self._plot_predictions_vs_actuals(
-            predictions=predictions, actuals=actuals, start_date=date
+        self._plot_predictions(
+            predictions=predictions, actuals=actuals, start_date=date, model_name=self._model.name
         )
