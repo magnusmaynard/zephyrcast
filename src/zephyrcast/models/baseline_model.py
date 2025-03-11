@@ -10,9 +10,17 @@ class BaselineModel(ModelInterface):
         self._context = 1
 
     @property
-    def context(self):
+    def window_size(self):
         return self._context
+    
+    @property
+    def is_trained(self):
+        return True
 
+    @property
+    def name(self):
+        return f"baseline"
+    
     def train(self, data_train: pd.DataFrame):
         pass
 

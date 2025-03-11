@@ -6,7 +6,17 @@ import pandas as pd
 class ModelInterface(ABC):
     @property
     @abstractmethod
-    def context(self):
+    def window_size(self):
+        pass
+
+    @property
+    @abstractmethod
+    def is_trained(self):
+        pass
+
+    @property
+    @abstractmethod
+    def name(self):
         pass
 
     @abstractmethod

@@ -21,22 +21,28 @@ class MultiVariantForecastModel(ModelInterface):
     def __init__(self, steps: int, target: str):
         self._steps = steps
         self._target = target
-        self._context = 24
+        self._window_size = 24
         self._model = self._load_latest_model()
 
     @property
-    def context(self):
-        return self._context
+    def window_size(self):
+        return self._window_size
 
-    def _save_model(self):
+    @property
+    def is_trained(self):
+        return self._model.is_fitted
+    
+    @property
+    def name(self):
         creation_date = datetime.strptime(
             self._model.creation_date, "%Y-%m-%d %H:%M:%S"
         ).strftime("%Y%m%d_%H%M%S")
+        return f"multivar_{creation_date}_X{self._target}"
+    
 
+    def _save_model(self):
         models_dir = project_config["models_dir"]
-        model_filename = f"zephyrcast_{creation_date}_X{self._model.level}_S{len(self._model.series_names_in_)}_L{len(self._model.lags)}"
-
-        model_path = os.path.join(models_dir, f"{model_filename}.joblib")
+        model_path = os.path.join(models_dir, f"{self.name}.joblib")
         save_forecaster(self._model, file_name=model_path, verbose=True)
         print(f"Saved model: {model_path}")
 
@@ -55,7 +61,7 @@ class MultiVariantForecastModel(ModelInterface):
         print(f"Forecast feature: {self._target}")
         print(f"Series features: {series_features}")
         print(f"Window features: {window_features}")
-        print(f"Lags: {self._context}")
+        print(f"Lags: {self._window_size}")
         print(f"Exogenous features: {list(data_exog.columns)}")
 
         model = ForecasterDirectMultiVariate(
@@ -63,7 +69,7 @@ class MultiVariantForecastModel(ModelInterface):
                 n_estimators=101, random_state=15926, max_depth=6, verbose=-1
             ),
             window_features=window_features,
-            lags=self._context,
+            lags=self._window_size,
             steps=self._steps,
             n_jobs="auto",
             level=self._target,
