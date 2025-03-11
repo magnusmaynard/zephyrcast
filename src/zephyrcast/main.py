@@ -80,7 +80,7 @@ def predict(live, date, arch):
         start_datetime = (
             date if isinstance(date, datetime) else datetime.fromisoformat(date)
         )
-        model.predict(start_date=start_datetime)
+        model.predict(date=start_datetime)
     elif live:
         raise NotImplementedError("Live predictions are not implemented")
     else:
