@@ -57,9 +57,9 @@ def extract_constant_features(data):
     return data[non_constant_cols], constant_df
 
 
-def find_latest_model_path():
+def find_latest_model_path(suffix: str):
     models_dir = project_config["models_dir"]
-    model_files = [f for f in os.listdir(models_dir) if f.endswith(".joblib")]
+    model_files = [f for f in os.listdir(models_dir) if f.endswith(suffix)]
 
     if not model_files:
         raise FileNotFoundError("No model files found in the models directory")

@@ -1,4 +1,3 @@
-from datetime import datetime
 import pandas as pd
 from zephyrcast.models.model_interface import ModelInterface
 
@@ -19,7 +18,7 @@ class BaselineModel(ModelInterface):
 
     @property
     def name(self):
-        return f"baseline"
+        return f"baseline_X{self._target}"
     
     def train(self, data_train: pd.DataFrame):
         pass

@@ -7,7 +7,6 @@ from datetime import datetime
 from zephyrcast import project_config
 from skforecast.preprocessing import RollingFeatures
 from skforecast.utils import save_forecaster
-import ipdb
 from skforecast.utils import load_forecaster
 
 from zephyrcast.data.utils import (
@@ -31,14 +30,13 @@ class MultiVariantForecastModel(ModelInterface):
     @property
     def is_trained(self):
         return self._model.is_fitted
-    
+
     @property
     def name(self):
         creation_date = datetime.strptime(
             self._model.creation_date, "%Y-%m-%d %H:%M:%S"
         ).strftime("%Y%m%d_%H%M%S")
         return f"multivar_{creation_date}_X{self._target}"
-    
 
     def _save_model(self):
         models_dir = project_config["models_dir"]
@@ -47,7 +45,7 @@ class MultiVariantForecastModel(ModelInterface):
         print(f"Saved model: {model_path}")
 
     def _load_latest_model(self) -> ForecasterDirectMultiVariate:
-        latest_model_path = find_latest_model_path()
+        latest_model_path = find_latest_model_path(suffix=".joblib")
         return load_forecaster(latest_model_path, verbose=True)
 
     def train(self, data_train: pd.DataFrame):
@@ -91,9 +89,9 @@ class MultiVariantForecastModel(ModelInterface):
         data = last_window.drop(columns=self._model.exog_names_in_)
         data_exog = last_window.drop(columns=self._model.series_names_in_)
         start_index = last_window.index[-1] + last_window.index.freq
-        new_index = pd.date_range(start=start_index, periods=len(data_exog), freq=last_window.index.freq)
+        new_index = pd.date_range(
+            start=start_index, periods=len(data_exog), freq=last_window.index.freq
+        )
         data_exog.index = new_index
 
-        return  self._model.predict(
-            last_window=data, exog=data_exog
-        )[self._model.level]
+        return self._model.predict(last_window=data, exog=data_exog)[self._model.level]

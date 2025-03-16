@@ -137,7 +137,6 @@ class ModelHarness:
             results_df["Predicted"],
             label="Predicted",
             color="red",
-            linestyle="--",
         )
         axes[0].set_title(f"Predicted vs Actual Values for {self._target}")
         axes[0].set_ylabel(self._target)
@@ -227,20 +226,22 @@ class ModelHarness:
         start_eval_date = self._data_split_date + freq
         start_eval_date = start_eval_date + (context_size * freq)
 
-        end_eval_date = self._data_test.index[-self._steps]
+        end_eval_date = self._data_test.index[-self._steps]# - freq * 3100
 
         all_predictions = []
         all_actuals = []
 
-        eval_dates = pd.date_range(start=start_eval_date, end=end_eval_date, freq=freq)
+        prediction_window_size = self._steps * freq
+
+        eval_dates = pd.date_range(start=start_eval_date, end=end_eval_date, freq=prediction_window_size)
 
         print(f"Backtesting from {start_eval_date} to {end_eval_date}")
         for eval_date in tqdm(eval_dates, desc="Evaluating", unit="window"):
-            window_start = eval_date - (context_size * freq)
-            window_end = eval_date
-            window_data = self._data_test.loc[window_start:window_end]
+            last_window_start = eval_date - self._model.window_size * freq
+            last_window_end = eval_date
+            last_window = self._data_test.loc[last_window_start:last_window_end]
 
-            predictions = self._model.predict(last_window=window_data)
+            predictions = self._model.predict(last_window=last_window)
             actuals = self._data_test.loc[predictions.index, self._target]
 
             all_predictions.append(predictions)
