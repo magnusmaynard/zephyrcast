@@ -7,8 +7,8 @@ from zephyrcast.data.fetch import fetch_data
 from zephyrcast.data.prepare import prepare_data
 
 DEFAULT_ARCH = "multivar"
-ARCH_OPTIONS = ["baseline", "multivar", "seq2seq"]
-TARGET = "0_wind_avg"
+ARCH_OPTIONS = ["baseline", "multivar", "lstm", "seq2seq"]
+TARGET = "0_temp"
 STEPS = 6
 
 

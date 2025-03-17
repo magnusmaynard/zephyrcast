@@ -4,3 +4,5 @@
 /models/
 *.pyc
 __pycache__/
+*.pth
+*.joblib
