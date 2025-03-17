@@ -26,7 +26,6 @@ class ModelHarness:
             self._model = MultiVariantForecastModel(steps=steps, target=target)
         elif arch == "seq2seq":
             raise NotImplementedError("Seq2Seq not implemented")
-            # self._model = Seq2SeqModel(steps=steps, target=target)
         elif arch == "lstm":
             self._model = LSTMModel(steps=steps, target=target)
         else:
@@ -222,8 +221,8 @@ class ModelHarness:
     def evaluate(self):
         print("Evaluating...")
 
-        # if not self._model.is_trained:
-        #     raise UsageError("Model must be trained before evaluation")
+        if not self._model.is_trained:
+            raise UsageError("Model must be trained before evaluation")
 
         context_size = self._model.window_size
 
@@ -291,8 +290,8 @@ class ModelHarness:
 
     def predict(self, date: datetime):
         print("Predicting...")
-        # if not self._model.is_trained:
-        #     raise UsageError("Model must be trained before predicting")
+        if not self._model.is_trained:
+            raise UsageError("Model must be trained before predicting")
 
         if date <= self._data_split_date:
             raise UsageError(

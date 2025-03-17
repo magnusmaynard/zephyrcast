@@ -67,17 +67,10 @@ class LSTMModel(ModelInterface):
         #     nearby_stations * features_per_nearby_station + features_per_target_station
         # )
         # output_size = 3  # 0_wind_avg, 0_wind_bearing, 0_wind_gust
-        hidden_size = 48
-        learning_rate = 0.001
-
-        self._encoder = Encoder(
-            window_size=self._window_size, hidden_size=hidden_size, steps=steps
-        )
-        self._criterion = nn.MSELoss()
-        self._optimizer = torch.optim.Adam(
-            self._encoder.parameters(),
-            lr=learning_rate,
-        )
+        self._hidden_size = 48
+        self.learning_rate = 0.001
+        self._initialise_model()
+        self._load_latest_model()
 
     @property
     def window_size(self):
@@ -90,6 +83,17 @@ class LSTMModel(ModelInterface):
     @property
     def name(self):
         return f"lstm_X{self._target}"
+    
+    def _initialise_model(self):
+        self._encoder =  Encoder(
+            window_size=self._window_size, hidden_size=self._hidden_size, steps=self._steps
+        )
+        self._criterion = nn.MSELoss()
+        self._optimizer = torch.optim.Adam(
+            self._encoder.parameters(),
+            lr= self.learning_rate,
+        )
+
 
     def _load_latest_model(self):
         try:
@@ -114,9 +118,9 @@ class LSTMModel(ModelInterface):
             model_path,
         )
 
-    def train(self, data_train: pd.DataFrame, epochs=10):
+    def train(self, data_train: pd.DataFrame, epochs=5):
 
-        self._encoder
+        self._initialise_model()
         dataset = WeatherDataset(
             data=data_train,
             target=self._target,
@@ -141,8 +145,6 @@ class LSTMModel(ModelInterface):
         self._is_trained = True
 
     def predict(self, last_window: pd.DataFrame) -> pd.DataFrame:
-        self._load_latest_model()
-
         last_window_torch = torch.from_numpy(
             last_window[self._target].to_numpy().astype(np.float32)
         ).unsqueeze(0)
