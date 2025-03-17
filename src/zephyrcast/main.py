@@ -9,7 +9,7 @@ from zephyrcast.data.prepare import prepare_data
 DEFAULT_ARCH = "multivar"
 ARCH_OPTIONS = ["baseline", "multivar", "lstm", "seq2seq"]
 TARGET = "0_temp"
-STEPS = 6
+STEPS = 1#6
 
 
 def get_model(arch=DEFAULT_ARCH):

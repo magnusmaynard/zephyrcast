@@ -11,7 +11,7 @@ from tqdm import tqdm
 from zephyrcast.data.utils import get_train_test_data
 from zephyrcast.models.baseline_model import BaselineModel
 from zephyrcast.models.multivar_forecast_model import MultiVariantForecastModel
-from zephyrcast.models.seq2seq_model import Seq2SeqModel
+from zephyrcast.models.lstm_model import LSTMModel
 from zephyrcast import project_config
 
 
@@ -25,7 +25,10 @@ class ModelHarness:
         if arch == "multivar":
             self._model = MultiVariantForecastModel(steps=steps, target=target)
         elif arch == "seq2seq":
-            self._model = Seq2SeqModel(steps=steps, target=target)
+            raise NotImplementedError("Seq2Seq not implemented")
+            # self._model = Seq2SeqModel(steps=steps, target=target)
+        elif arch == "lstm":
+            self._model = LSTMModel(steps=steps, target=target)
         else:
             self._model = BaselineModel(steps=steps, target=target)
 
@@ -36,6 +39,9 @@ class ModelHarness:
         self._data_train, self._data_test = get_train_test_data(
             filename=self._data_filename, train_split_date=self._data_split_date
         )
+        
+        # self._data_train[self._target].plot()
+        # plt.show()
 
     def _plot_predictions(
         self, predictions: pd.DataFrame, actuals: pd.DataFrame, start_date: datetime, model_name: str
@@ -216,8 +222,8 @@ class ModelHarness:
     def evaluate(self):
         print("Evaluating...")
 
-        if not self._model.is_trained:
-            raise UsageError("Model must be trained before evaluation")
+        # if not self._model.is_trained:
+        #     raise UsageError("Model must be trained before evaluation")
 
         context_size = self._model.window_size
 
@@ -285,8 +291,8 @@ class ModelHarness:
 
     def predict(self, date: datetime):
         print("Predicting...")
-        if not self._model.is_trained:
-            raise UsageError("Model must be trained before predicting")
+        # if not self._model.is_trained:
+        #     raise UsageError("Model must be trained before predicting")
 
         if date <= self._data_split_date:
             raise UsageError(
@@ -308,6 +314,9 @@ class ModelHarness:
         mse = np.mean((predictions.values - actuals.values) ** 2)
         print(f"MSE: {mse:.4f}")
 
-        self._plot_predictions(
-            predictions=predictions, actuals=actuals, start_date=date, model_name=self._model.name
-        )
+        print(predictions.shape)
+        print(actuals.shape)
+
+        # self._plot_predictions(
+        #     predictions=predictions, actuals=actuals, start_date=date, model_name=self._model.name
+        # )

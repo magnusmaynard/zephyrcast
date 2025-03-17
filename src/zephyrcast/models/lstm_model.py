@@ -33,10 +33,10 @@ class WeatherDataset(Dataset):
 
 
 class Encoder(nn.Module):
-    def __init__(self, input_size: int, hidden_size: int):
+    def __init__(self, window_size: int, hidden_size: int, steps: int):
         super().__init__()
         self.lstm = nn.LSTM(
-            input_size=input_size, hidden_size=hidden_size, num_layers=1, batch_first=True
+            input_size=window_size, hidden_size=hidden_size, num_layers=1, batch_first=True
         )
         self.linear = nn.Linear(hidden_size, 1)
 
@@ -49,9 +49,9 @@ class Encoder(nn.Module):
 class LSTMModel(ModelInterface):
     def __init__(self, steps: int, target: str):
 
-        self._steps = 1#steps
+        self._steps = steps
         self._target = target
-        self._window_size = 1 # 24
+        self._window_size = 4 # 24
         self._is_trained = False
 
         # nearby_stations = 6
@@ -60,19 +60,17 @@ class LSTMModel(ModelInterface):
         # input_size = (
         #     nearby_stations * features_per_nearby_station + features_per_target_station
         # )
-        input_size = 1
         # output_size = 3  # 0_wind_avg, 0_wind_bearing, 0_wind_gust
         hidden_size = 48
         self._batch_size = 8
         learning_rate = 0.001
 
-        self._encoder = Encoder(input_size=input_size, hidden_size=hidden_size)
+        self._encoder = Encoder(window_size=self._window_size, hidden_size=hidden_size, steps=steps)
         self._criterion = nn.MSELoss()
         self._optimizer = torch.optim.Adam(self._encoder.parameters(),
             lr=learning_rate,
         )
 
-        self._load_latest_model()
 
     @property
     def window_size(self):
@@ -111,7 +109,9 @@ class LSTMModel(ModelInterface):
         )
 
 
-    def train(self, data_train: pd.DataFrame, epochs=5):
+    def train(self, data_train: pd.DataFrame, epochs=3):
+        
+        self._encoder
         dataset = WeatherDataset(
             data=data_train, target=self._target, window_size=self._window_size, steps=self._steps
         )
@@ -134,7 +134,9 @@ class LSTMModel(ModelInterface):
         self._is_trained = True
 
     def predict(self, last_window: pd.DataFrame) -> pd.DataFrame:
-        last_window_torch =  torch.from_numpy(last_window[self._target].to_numpy().astype(np.float32)).unsqueeze(-1)
+        self._load_latest_model()
+       
+        last_window_torch =  torch.from_numpy(last_window[self._target].to_numpy().astype(np.float32)).unsqueeze(0)
         self._encoder.eval()
         with torch.no_grad():
             predictions_torch = self._encoder(last_window_torch)
