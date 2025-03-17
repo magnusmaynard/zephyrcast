@@ -314,9 +314,6 @@ class ModelHarness:
         mse = np.mean((predictions.values - actuals.values) ** 2)
         print(f"MSE: {mse:.4f}")
 
-        print(predictions.shape)
-        print(actuals.shape)
-
-        # self._plot_predictions(
-        #     predictions=predictions, actuals=actuals, start_date=date, model_name=self._model.name
-        # )
+        self._plot_predictions(
+            predictions=predictions, actuals=actuals, start_date=date, model_name=self._model.name
+        )

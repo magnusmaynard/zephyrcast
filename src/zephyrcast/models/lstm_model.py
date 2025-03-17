@@ -42,9 +42,10 @@ class Encoder(nn.Module):
             num_layers=1,
             batch_first=True,
         )
-        self.linear = nn.Linear(hidden_size, 1)
+        self.linear = nn.Linear(hidden_size, steps)
 
     def forward(self, x):
+        # TODO: is this right for multiple steps?
         x, _ = self.lstm(x)
         x = self.linear(x)
         return x
@@ -55,8 +56,9 @@ class LSTMModel(ModelInterface):
 
         self._steps = steps
         self._target = target
-        self._window_size = 4  # 24
+        self._window_size = 24
         self._is_trained = False
+        self._batch_size = 8
 
         # nearby_stations = 6
         # features_per_nearby_station = 15
@@ -66,7 +68,6 @@ class LSTMModel(ModelInterface):
         # )
         # output_size = 3  # 0_wind_avg, 0_wind_bearing, 0_wind_gust
         hidden_size = 48
-        self._batch_size = 8
         learning_rate = 0.001
 
         self._encoder = Encoder(
@@ -113,7 +114,7 @@ class LSTMModel(ModelInterface):
             model_path,
         )
 
-    def train(self, data_train: pd.DataFrame, epochs=3):
+    def train(self, data_train: pd.DataFrame, epochs=10):
 
         self._encoder
         dataset = WeatherDataset(
@@ -148,7 +149,7 @@ class LSTMModel(ModelInterface):
         self._encoder.eval()
         with torch.no_grad():
             predictions_torch = self._encoder(last_window_torch)
-        predictions = pd.DataFrame(predictions_torch.cpu().numpy())
+        predictions = pd.DataFrame(predictions_torch.cpu().numpy()).transpose().squeeze()
         start_index = last_window.index[-1] + last_window.index.freq
         new_index = pd.date_range(
             start=start_index, periods=len(predictions), freq=last_window.index.freq
