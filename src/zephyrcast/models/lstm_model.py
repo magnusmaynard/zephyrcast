@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from zephyrcast.data.utils import find_latest_model_path, load_data_from_csv
 
+
 class WeatherDataset(Dataset):
     def __init__(self, data, target, window_size, steps):
         self._data = data
@@ -22,13 +23,13 @@ class WeatherDataset(Dataset):
 
     def __getitem__(self, idx):
         # input
-        x = self._data.iloc[idx : idx + self._window_size][
-            self._target
-        ].values.astype(np.float32)
+        x = self._data.iloc[idx : idx + self._window_size][self._target].values.astype(
+            np.float32
+        )
         # output
-        y = self._data.iloc[idx + self._window_size : idx + self._window_size + self._steps][
-            self._target
-        ].values.astype(np.float32)
+        y = self._data.iloc[
+            idx + self._window_size : idx + self._window_size + self._steps
+        ][self._target].values.astype(np.float32)
         return torch.from_numpy(x), torch.from_numpy(y)
 
 
@@ -36,7 +37,10 @@ class Encoder(nn.Module):
     def __init__(self, window_size: int, hidden_size: int, steps: int):
         super().__init__()
         self.lstm = nn.LSTM(
-            input_size=window_size, hidden_size=hidden_size, num_layers=1, batch_first=True
+            input_size=window_size,
+            hidden_size=hidden_size,
+            num_layers=1,
+            batch_first=True,
         )
         self.linear = nn.Linear(hidden_size, 1)
 
@@ -51,7 +55,7 @@ class LSTMModel(ModelInterface):
 
         self._steps = steps
         self._target = target
-        self._window_size = 4 # 24
+        self._window_size = 4  # 24
         self._is_trained = False
 
         # nearby_stations = 6
@@ -65,12 +69,14 @@ class LSTMModel(ModelInterface):
         self._batch_size = 8
         learning_rate = 0.001
 
-        self._encoder = Encoder(window_size=self._window_size, hidden_size=hidden_size, steps=steps)
+        self._encoder = Encoder(
+            window_size=self._window_size, hidden_size=hidden_size, steps=steps
+        )
         self._criterion = nn.MSELoss()
-        self._optimizer = torch.optim.Adam(self._encoder.parameters(),
+        self._optimizer = torch.optim.Adam(
+            self._encoder.parameters(),
             lr=learning_rate,
         )
-
 
     @property
     def window_size(self):
@@ -97,7 +103,6 @@ class LSTMModel(ModelInterface):
             print(f"Failed to load model: {ex}")
             self._is_trained = False
 
-
     def _save_model(self):
         models_dir = project_config["models_dir"]
         model_path = os.path.join(models_dir, f"{self.name}.pth")
@@ -108,12 +113,14 @@ class LSTMModel(ModelInterface):
             model_path,
         )
 
-
     def train(self, data_train: pd.DataFrame, epochs=3):
-        
+
         self._encoder
         dataset = WeatherDataset(
-            data=data_train, target=self._target, window_size=self._window_size, steps=self._steps
+            data=data_train,
+            target=self._target,
+            window_size=self._window_size,
+            steps=self._steps,
         )
         loader = DataLoader(dataset, batch_size=self._batch_size, shuffle=True)
 
@@ -126,17 +133,18 @@ class LSTMModel(ModelInterface):
                 self._optimizer.zero_grad()
                 loss.backward()
                 self._optimizer.step()
-                epoch_loss += loss.item()            
+                epoch_loss += loss.item()
             print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss / len(loader)}")
-        
 
         self._save_model()
         self._is_trained = True
 
     def predict(self, last_window: pd.DataFrame) -> pd.DataFrame:
         self._load_latest_model()
-       
-        last_window_torch =  torch.from_numpy(last_window[self._target].to_numpy().astype(np.float32)).unsqueeze(0)
+
+        last_window_torch = torch.from_numpy(
+            last_window[self._target].to_numpy().astype(np.float32)
+        ).unsqueeze(0)
         self._encoder.eval()
         with torch.no_grad():
             predictions_torch = self._encoder(last_window_torch)
