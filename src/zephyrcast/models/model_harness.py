@@ -32,7 +32,7 @@ class ModelHarness:
         else:
             self._model = BaselineModel(steps=steps, target=target)
 
-        self._data_filename = "rocky_gully_features.csv"
+        self._data_filename = "rocky_gully_near_6_features.csv"
         self._data_split_date = datetime.strptime(
             "2025-02-07 23:59:00", "%Y-%m-%d %H:%M:%S"
         )

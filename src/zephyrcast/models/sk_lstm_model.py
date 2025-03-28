@@ -56,7 +56,7 @@ class SKLSTMModel(ModelInterface):
     def __init__(self, steps: int, target: str):
         self._steps = steps
         self._target = target
-        self._window_size = 24
+        self._window_size = 36
         self._model = self._load_latest_model()
 
     @property
@@ -88,32 +88,18 @@ class SKLSTMModel(ModelInterface):
         return load_forecaster(latest_model_path, verbose=True)
 
     def train(self, data_train: pd.DataFrame, data_test: pd.DataFrame):
-        # data, data_const = extract_constant_features(data_train)
-        # data_exog = pd.concat([data_const] * len(data), ignore_index=True)
-        # data_exog.index = data.index
-
-        # data_test.drop(columns=data_exog.columns)
-
-        data = data_train
-
-        # window_features = RollingFeatures(stats=["mean", "sum"], window_sizes=[15, 15])
-        # series_features = list(data.drop(columns=self._target))
-
         print(f"Forecast feature: {self._target}")
-        # print(f"Series features: {series_features}")
-        # print(f"Window features: {window_features}")
         print(f"Lags: {self._window_size}")
-        # print(f"Exogenous features: {list(data_exog.columns)}")
 
         regressor = create_and_compile_model(
-            series=data,
+            series=data_train,
             levels=[self._target], 
             lags=self._window_size,
             steps=self._steps,
             recurrent_layer="LSTM",
-            recurrent_units=50,
-            dense_units=32,
-            optimizer=Adam(learning_rate=0.01), 
+            recurrent_units=100,
+            dense_units=64,
+            optimizer=Adam(learning_rate=0.0001), 
             loss=MeanSquaredError()
         )
         regressor.summary()
@@ -123,10 +109,10 @@ class SKLSTMModel(ModelInterface):
             levels=[self._target],
             transformer_series=MinMaxScaler(),
             fit_kwargs={
-                "epochs": 2,
-                "batch_size": 32,
+                "epochs": 10,
+                "batch_size": 16,
                 "callbacks": [
-                    EarlyStopping(monitor="val_loss", patience=5)
+                    EarlyStopping(monitor="val_loss", patience=0, restore_best_weights=True)
                 ],
                 "series_val": data_test,
             },
@@ -135,17 +121,7 @@ class SKLSTMModel(ModelInterface):
         self._model 
 
         print("Fitting...")
-        self._model.fit(series=data)
-
-        fig, ax = plt.subplots(figsize=(6, 2.5))
-        self._model.plot_history(ax=ax)
-
-        # feature_importance_step = 1
-        # top_features = 10
-        # print(f"Feature importance (step={feature_importance_step}, n=10):")
-        # print(
-        #     self._model.get_feature_importances(step=feature_importance_step)[:top_features]
-        # )
+        self._model.fit(series=data_train)
 
         self._save_model()
 
