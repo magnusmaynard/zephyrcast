@@ -11,27 +11,28 @@ from tqdm import tqdm
 from zephyrcast.data.utils import get_train_test_data
 from zephyrcast.models.baseline_model import BaselineModel
 from zephyrcast.models.multivar_forecast_model import MultiVariantForecastModel
+from zephyrcast.models.sk_lstm_model import SKLSTMModel
 from zephyrcast.models.lstm_model import LSTMModel
 from zephyrcast import project_config
 
 
 class ModelHarness:
     def __init__(
-        self, arch: Literal["baseline", "multivar", "seq2seq"], steps: int, target: str
+        self, arch: Literal["baseline", "multivar", "lstm", "sklstm"], steps: int, target: str
     ):
         print("Initialising model...")
         self._steps = steps
         self._target = target
         if arch == "multivar":
             self._model = MultiVariantForecastModel(steps=steps, target=target)
-        elif arch == "seq2seq":
-            raise NotImplementedError("Seq2Seq not implemented")
         elif arch == "lstm":
-            self._model = LSTMModel(steps=steps, target=target)
+            self._model = LSTMModel(steps=steps, target=target, input_size=16)
+        elif arch == "sklstm":
+            self._model = SKLSTMModel(steps=steps, target=target)
         else:
             self._model = BaselineModel(steps=steps, target=target)
 
-        self._data_filename = "rocky_gully_near_6_features.csv"
+        self._data_filename = "rocky_gully_features.csv"
         self._data_split_date = datetime.strptime(
             "2025-02-07 23:59:00", "%Y-%m-%d %H:%M:%S"
         )
@@ -216,7 +217,7 @@ class ModelHarness:
 
     def train(self):
         print("Training...")
-        self._model.train(data_train=self._data_train)
+        self._model.train(data_train=self._data_train, data_test=self._data_test)
 
     def evaluate(self):
         print("Evaluating...")

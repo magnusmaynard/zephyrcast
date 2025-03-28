@@ -12,18 +12,22 @@ from zephyrcast.data.utils import find_latest_model_path, load_data_from_csv
 
 
 class WeatherDataset(Dataset):
-    def __init__(self, data, target, window_size, steps):
+    def __init__(self, data, target, window_size, input_size, steps):
         self._data = data
         self._target = target
         self._window_size = window_size
         self._steps = steps
+        self._input_size = input_size
+        self._input_features = data.columns
+        assert len(self._input_features) == self._input_size
+       
 
     def __len__(self):
         return len(self._data) - self._window_size - self._steps
 
     def __getitem__(self, idx):
-        # input
-        x = self._data.iloc[idx : idx + self._window_size][self._target].values.astype(
+        # input 
+        x = self._data.iloc[idx : idx + self._window_size][self._input_features].values.astype(
             np.float32
         )
         # output
@@ -34,10 +38,10 @@ class WeatherDataset(Dataset):
 
 
 class Encoder(nn.Module):
-    def __init__(self, window_size: int, hidden_size: int, steps: int):
+    def __init__(self, input_size: int, hidden_size: int, steps: int):
         super().__init__()
         self.lstm = nn.LSTM(
-            input_size=window_size,
+            input_size=input_size,
             hidden_size=hidden_size,
             num_layers=1,
             batch_first=True,
@@ -45,30 +49,25 @@ class Encoder(nn.Module):
         self.linear = nn.Linear(hidden_size, steps)
 
     def forward(self, x):
-        # TODO: is this right for multiple steps?
-        x, _ = self.lstm(x)
-        x = self.linear(x)
-        return x
+        # x shape: [batch_size, window_size, input_size]
+        lstm_out, (hidden, _) = self.lstm(x)
+        hidden = hidden.squeeze(0)
+        predictions = self.linear(hidden)
+        return predictions
 
 
 class LSTMModel(ModelInterface):
-    def __init__(self, steps: int, target: str):
+    def __init__(self, steps: int, target: str, input_size: int):
 
         self._steps = steps
         self._target = target
+        self._input_size = input_size
         self._window_size = 24
         self._is_trained = False
         self._batch_size = 8
 
-        # nearby_stations = 6
-        # features_per_nearby_station = 15
-        # features_per_target_station = 17
-        # input_size = (
-        #     nearby_stations * features_per_nearby_station + features_per_target_station
-        # )
-        # output_size = 3  # 0_wind_avg, 0_wind_bearing, 0_wind_gust
         self._hidden_size = 48
-        self.learning_rate = 0.001
+        self._learning_rate = 0.001
         self._initialise_model()
         self._load_latest_model()
 
@@ -86,12 +85,12 @@ class LSTMModel(ModelInterface):
     
     def _initialise_model(self):
         self._encoder =  Encoder(
-            window_size=self._window_size, hidden_size=self._hidden_size, steps=self._steps
+            input_size=self._input_size, hidden_size=self._hidden_size, steps=self._steps
         )
         self._criterion = nn.MSELoss()
         self._optimizer = torch.optim.Adam(
             self._encoder.parameters(),
-            lr= self.learning_rate,
+            lr = self._learning_rate,
         )
 
 
@@ -119,12 +118,12 @@ class LSTMModel(ModelInterface):
         )
 
     def train(self, data_train: pd.DataFrame, epochs=5):
-
         self._initialise_model()
         dataset = WeatherDataset(
             data=data_train,
             target=self._target,
             window_size=self._window_size,
+            input_size=self._input_size,
             steps=self._steps,
         )
         loader = DataLoader(dataset, batch_size=self._batch_size, shuffle=True)
@@ -146,7 +145,7 @@ class LSTMModel(ModelInterface):
 
     def predict(self, last_window: pd.DataFrame) -> pd.DataFrame:
         last_window_torch = torch.from_numpy(
-            last_window[self._target].to_numpy().astype(np.float32)
+            last_window.to_numpy().astype(np.float32)
         ).unsqueeze(0)
         self._encoder.eval()
         with torch.no_grad():
