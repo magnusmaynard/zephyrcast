@@ -29,7 +29,7 @@ class MultiVariantForecastModel(ModelInterface):
 
     @property
     def is_trained(self):
-        return self._model.is_fitted
+        return self._model is not None and self._model.is_fitted
 
     @property
     def name(self):
@@ -44,11 +44,14 @@ class MultiVariantForecastModel(ModelInterface):
         save_forecaster(self._model, file_name=model_path, verbose=True)
         print(f"Saved model: {model_path}")
 
-    def _load_latest_model(self) -> ForecasterDirectMultiVariate:
-        latest_model_path = find_latest_model_path(suffix=".joblib")
+    def _load_latest_model(self) -> ForecasterDirectMultiVariate | None:
+        try:
+            latest_model_path = find_latest_model_path(prefix="multivar", suffix=f"{self._target}.joblib")
+        except FileNotFoundError:
+            return None
         return load_forecaster(latest_model_path, verbose=True)
 
-    def train(self, data_train: pd.DataFrame):
+    def train(self, data_train: pd.DataFrame, data_test: None):
         data, data_const = extract_constant_features(data_train)
         data_exog = pd.concat([data_const] * len(data), ignore_index=True)
         data_exog.index = data.index
@@ -62,7 +65,7 @@ class MultiVariantForecastModel(ModelInterface):
         print(f"Lags: {self._window_size}")
         print(f"Exogenous features: {list(data_exog.columns)}")
 
-        model = ForecasterDirectMultiVariate(
+        self._model = ForecasterDirectMultiVariate(
             regressor=LGBMRegressor(
                 n_estimators=101, random_state=15926, max_depth=6, verbose=-1
             ),
@@ -74,13 +77,13 @@ class MultiVariantForecastModel(ModelInterface):
         )
 
         print("Fitting...")
-        model.fit(series=data, exog=data_exog)
+        self._model.fit(series=data, exog=data_exog)
 
         feature_importance_step = 1
         top_features = 10
         print(f"Feature importance (step={feature_importance_step}, n=10):")
         print(
-            model.get_feature_importances(step=feature_importance_step)[:top_features]
+            self._model.get_feature_importances(step=feature_importance_step)[:top_features]
         )
 
         self._save_model()
@@ -94,4 +97,6 @@ class MultiVariantForecastModel(ModelInterface):
         )
         data_exog.index = new_index
 
-        return self._model.predict(last_window=data, exog=data_exog)[self._model.level]
+        predictions = self._model.predict(last_window=data, exog=data_exog)
+
+        return predictions.drop(columns="level").squeeze()
